@@ -11,6 +11,11 @@ Format (template):
 
 ---
 
+## 2025-10-05 — Add name prompt for creating shapes and notes
+- Description: Implemented a modal prompt that requires users to enter a name before creating new shapes or notes. The prompt pre-fills with auto-numbered default names (Shape 1, Shape 2, Note 1, Note 2) that users can accept immediately or customize. Users can also cancel to abort creation, preventing accidental workspace clutter.
+- Files touched: `index.html`
+- Notes: Modal input supports Enter key for quick confirmation, auto-focuses and selects default text for easy editing. The naming system intelligently calculates the next available number by scanning existing shapes/notes. Accessibility preserved: typing in the modal disables camera navigation.
+
 ## 2025-10-05 — Fix delete behaviors
 - Description: Made the note editor’s delete button remove only the selected note (with confirmation). Restored object deletion via a new "Delete Object" button in the shape edit panel, with its own confirmation.
 - Files touched: `index.html`
