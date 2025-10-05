@@ -11,6 +11,11 @@ Format (template):
 
 ---
 
+## 2025-01-09 — Name-before-create for shapes and notes
+- Description: Implemented required naming flow for creating new shapes and notes. Shapes now auto-number (Shape 1, Shape 2, etc.) in the edit panel. Notes now show a prompt modal with auto-numbered default name (Note 1, Note 2, etc.) before creation. Both flows allow canceling without creating the item.
+- Files touched: `index.html`
+- Notes: Added name prompt modal with Enter/Escape keyboard support and isTyping flag for all input fields to disable navigation while typing.
+
 ## 2025-10-05 — Note editor handles & hover affordance
 - Description: Restyled the note editor resize handles into classic right-angle triangles and added hover/focus feedback to the "+ New Note" button for clearer interactivity cues.
 - Files touched: `index.html`
