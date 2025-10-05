@@ -11,18 +11,30 @@ Format (template):
 
 ---
 
-## 2025-10-05 — Fix delete behaviors
-- Description: Made the note editor’s delete button remove only the selected note (with confirmation). Restored object deletion via a new "Delete Object" button in the shape edit panel, with its own confirmation.
+## 2025-10-05 — Note editor handles & hover affordance
+- Description: Restyled the note editor resize handles into classic right-angle triangles and added hover/focus feedback to the "+ New Note" button for clearer interactivity cues.
 - Files touched: `index.html`
-- Notes: Modal message now adapts to note vs object deletion.
 
-## 2025-10-05 — Modal overlay z-index + delete confirm
+## 2025-10-05 — Shape editor button layout + close affordance
+- Description: Updated the object edit panel with a top-right close icon, renamed the footer button to “Cancel,” and aligned the trash-can delete button on the left for visual consistency with the note editor.
+- Files touched: `index.html`
 
 ## 2025-10-05 — Close notes when parent object deleted
 - Description: When an object is removed, any open note editor tied to it now closes (or clears state), and pending note openings are cancelled.
 - Files touched: `index.html`
 
+## 2025-10-05 — Modal overlay z-index + delete confirm
+- Description: Ensured the confirmation modal overlays the shape edit panel and that clicking “Yes, Delete” reliably triggers the fade-out and removal.
+- Files touched: `index.html`
+
+## 2025-10-05 — Fix delete behaviors
+- Description: Made the note editor’s delete button remove only the selected note (with confirmation). Restored object deletion via a new "Delete Object" button in the shape edit panel, with its own confirmation.
+- Files touched: `index.html`
+- Notes: Modal message now adapts to note vs object deletion.
+
 ## 2025-10-05 — Add PR template with checklist
+- Description: Added a PR template enforcing iteration log updates, smoke checks, and preservation of the single-file analog sci-fi aesthetic.
+- Files touched: `.github/pull_request_template.md`, `.github/copilot-instructions.md`
 
 ## 2025-10-05 — Tab focus: quick, smooth lock-on
 - Description: Reworked Tab cycle tween to be timestamp-based with an ease-in/out curve, shortened duration, interruptible cycling, and momentum reset for a snappy yet comfortable focus.

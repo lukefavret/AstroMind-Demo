@@ -160,6 +160,8 @@
             background-color: rgba(200, 48, 62, 0.9);
         }
         #delete-note svg { width: 1.2em; height: 1.2em; }
+        #delete-shape-btn { display: flex; align-items: center; gap: 6px; margin-right: auto; }
+        #delete-shape-btn svg { width: 16px; height: 16px; }
 
         /* Global "Add Object" CTA */
         #add-object-btn {
@@ -211,19 +213,27 @@
         /* Editor resize affordances */
         .resize-handle {
             position: absolute;
-            width: 15px;
-            height: 15px;
+            width: 18px;
+            height: 18px;
             z-index: 1001;
-             background-image: repeating-linear-gradient(
-                -45deg,
-                transparent,
-                transparent 4px,
-                rgba(255, 255, 255, 0.5) 4px,
-                rgba(255, 255, 255, 0.5) 5px
-            );
+            pointer-events: auto;
+            transition: filter 0.2s ease;
         }
-        #resize-handle-bl { bottom: 5px; left: 5px; cursor: nesw-resize; }
-        #resize-handle-br { bottom: 5px; right: 5px; cursor: nwse-resize; }
+        #resize-handle-bl {
+            bottom: 5px;
+            left: 5px;
+            cursor: nesw-resize;
+            background: linear-gradient(225deg, transparent 50%, rgba(255, 255, 255, 0.75) 50%);
+        }
+        #resize-handle-br {
+            bottom: 5px;
+            right: 5px;
+            cursor: nwse-resize;
+            background: linear-gradient(135deg, transparent 50%, rgba(255, 255, 255, 0.75) 50%);
+        }
+        #resize-handle-bl:hover, #resize-handle-br:hover {
+            filter: brightness(1.25);
+        }
 
         /* Minimal close icon (kept simple for readability & CRT feel) */
         #close-btn { position: absolute; top: 5px; right: 5px; width: 20px; height: 20px; cursor: pointer; opacity: 0.8; transition: opacity 0.2s; }
@@ -231,6 +241,11 @@
         #close-btn::before, #close-btn::after { content: ''; position: absolute; top: 9px; left: 2px; width: 16px; height: 2px; background-color: #fff; }
         #close-btn::before { transform: rotate(45deg); }
         #close-btn::after { transform: rotate(-45deg); }
+        #shape-close-btn { position: absolute; top: 8px; right: 10px; width: 18px; height: 18px; cursor: pointer; opacity: 0.75; transition: opacity 0.2s; }
+        #shape-close-btn:hover { opacity: 1; }
+        #shape-close-btn::before, #shape-close-btn::after { content: ''; position: absolute; top: 8px; left: 2px; width: 14px; height: 2px; background-color: #fff; }
+        #shape-close-btn::before { transform: rotate(45deg); }
+        #shape-close-btn::after { transform: rotate(-45deg); }
 
         /* ===============================
            On-object UI card (CSS2D label)
@@ -259,7 +274,8 @@
         .notes-list li { padding: 5px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.2); }
         .notes-list li:hover { background: rgba(255,255,255,0.2); }
         .notes-list li:last-child { border-bottom: none; }
-        .add-note-btn { background: rgba(255,255,255,0.2); border: none; color: white; width: 100%; padding: 5px; margin-top: 5px; cursor: pointer; }
+        .add-note-btn { background: rgba(255,255,255,0.2); border: none; color: white; width: 100%; padding: 5px; margin-top: 5px; cursor: pointer; transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease; }
+        .add-note-btn:hover, .add-note-btn:focus { background: rgba(255,255,255,0.35); transform: translateY(-1px); box-shadow: 0 0 6px rgba(255,255,255,0.25); outline: 2px solid rgba(255,255,255,0.7); outline-offset: 2px; }
 
         /* Shape edit panel (object properties) */
         #shape-edit-panel {
@@ -371,6 +387,7 @@
     </div>
     <!-- Edit currently selected object's shape, name, and color -->
     <div id="shape-edit-panel">
+        <div id="shape-close-btn" title="Cancel"></div>
         <h3>Edit Shape</h3>
         <div class="form-group">
             <label for="shape-name-input">Name</label>
@@ -390,9 +407,15 @@
             <input type="color" id="shape-color-input" value="#ffffff">
         </div>
         <div class="button-group">
+            <button id="delete-shape-btn" class="btn" title="Delete Object">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z"/>
+                    <path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3V2h11v1z"/>
+                </svg>
+                Delete
+            </button>
             <button id="save-shape-btn" class="btn">Save</button>
-            <button id="delete-shape-btn" class="btn" title="Delete Object">Delete</button>
-            <button id="close-shape-edit-btn" class="btn">Close</button>
+            <button id="close-shape-edit-btn" class="btn">Cancel</button>
         </div>
     </div>
 
@@ -466,6 +489,7 @@
         const resizeHandleBR = document.getElementById('resize-handle-br');
         const dragHandle = document.getElementById('drag-handle');
         const shapeEditPanel = document.getElementById('shape-edit-panel');
+        const shapeCloseBtn = document.getElementById('shape-close-btn');
         let deleteAction = null;
         
         // =================================================================================
@@ -726,8 +750,10 @@
             closeBtn.addEventListener('click', closeNoteEditorWithAnimation);
             modalConfirmBtn.addEventListener('click', () => { if (deleteAction) deleteAction(); });
             modalCancelBtn.addEventListener('click', hideModal);
+            const closeShapeEdit = () => { shapeEditPanel.style.display = 'none'; editingObject = null; };
             document.getElementById('save-shape-btn').addEventListener('click', saveShapeChanges);
-            document.getElementById('close-shape-edit-btn').addEventListener('click', () => { shapeEditPanel.style.display = 'none'; editingObject = null; });
+            document.getElementById('close-shape-edit-btn').addEventListener('click', closeShapeEdit);
+            shapeCloseBtn.addEventListener('click', closeShapeEdit);
             document.getElementById('delete-shape-btn').addEventListener('click', handleDeleteObjectFromShapeEditor);
 
             // Draggable + resizable editor
