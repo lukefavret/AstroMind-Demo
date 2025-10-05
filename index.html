@@ -207,6 +207,22 @@
         #modal-confirm-btn:hover { background-color: rgba(200, 48, 62, 0.9); }
         #modal-cancel-btn { background-color: rgba(255, 255, 255, 0.2); border-color: rgba(255,255,255,0.5); }
         #modal-cancel-btn:hover { background-color: rgba(255, 255, 255, 0.4); }
+        .modal-input {
+            width: 100%;
+            padding: 10px;
+            margin-top: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 0;
+            color: white;
+            font-size: 1em;
+            font-family: inherit;
+        }
+        .modal-input:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.6);
+            background: rgba(255, 255, 255, 0.15);
+        }
 
         /* Editor resize affordances */
         .resize-handle {
@@ -409,6 +425,18 @@
         </div>
     </div>
 
+    <!-- Name prompt modal for creating new shapes/notes -->
+    <div id="name-prompt-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <p id="name-prompt-message">Enter a name:</p>
+            <input type="text" id="name-prompt-input" class="modal-input" placeholder="Name">
+            <div class="modal-buttons">
+                <button id="name-prompt-confirm-btn" class="btn">Create</button>
+                <button id="name-prompt-cancel-btn" class="btn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS2DRenderer.js"></script>
@@ -462,11 +490,18 @@
     const confirmMessage = document.getElementById('confirm-message');
         const modalConfirmBtn = document.getElementById('modal-confirm-btn');
         const modalCancelBtn = document.getElementById('modal-cancel-btn');
+        const namePromptModal = document.getElementById('name-prompt-modal');
+        const namePromptMessage = document.getElementById('name-prompt-message');
+        const namePromptInput = document.getElementById('name-prompt-input');
+        const namePromptConfirmBtn = document.getElementById('name-prompt-confirm-btn');
+        const namePromptCancelBtn = document.getElementById('name-prompt-cancel-btn');
         const resizeHandleBL = document.getElementById('resize-handle-bl');
         const resizeHandleBR = document.getElementById('resize-handle-br');
         const dragHandle = document.getElementById('drag-handle');
         const shapeEditPanel = document.getElementById('shape-edit-panel');
         let deleteAction = null;
+        let namePromptAction = null; // Callback for name prompt confirmation
+        let pendingNoteObject = null; // Object for which we're creating a note
         
         // =================================================================================
         // SECTION: SETTINGS LOADER (single-file + localStorage overrides)
@@ -718,6 +753,8 @@
 
             // Accessibility: disable nav while typing
             noteTitleInput.addEventListener('focus', () => { isTyping = true; }); noteTitleInput.addEventListener('blur', () => { isTyping = false; }); noteContentInput.addEventListener('focus', () => { isTyping = true; }); noteContentInput.addEventListener('blur', () => { isTyping = false; });
+            namePromptInput.addEventListener('focus', () => { isTyping = true; }); namePromptInput.addEventListener('blur', () => { isTyping = false; });
+            namePromptInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); namePromptConfirmBtn.click(); } });
 
             // Primary UI actions
             addObjectBtn.addEventListener('click', handleAddNewObjectClick);
@@ -726,6 +763,8 @@
             closeBtn.addEventListener('click', closeNoteEditorWithAnimation);
             modalConfirmBtn.addEventListener('click', () => { if (deleteAction) deleteAction(); });
             modalCancelBtn.addEventListener('click', hideModal);
+            namePromptConfirmBtn.addEventListener('click', handleNamePromptConfirm);
+            namePromptCancelBtn.addEventListener('click', hideNamePromptModal);
             document.getElementById('save-shape-btn').addEventListener('click', saveShapeChanges);
             document.getElementById('close-shape-edit-btn').addEventListener('click', () => { shapeEditPanel.style.display = 'none'; editingObject = null; });
             document.getElementById('delete-shape-btn').addEventListener('click', handleDeleteObjectFromShapeEditor);
@@ -745,8 +784,73 @@
         /** Resize from bottom-right handle. */
         function initResizeBR(element, handle) { let startX, startY, startWidth, startHeight; function doDrag(e) { e.preventDefault(); element.style.width = (startWidth + (e.clientX - startX)) + 'px'; element.style.height = (startHeight + (e.clientY - startY)) + 'px'; } function stopDrag() { document.documentElement.removeEventListener('mousemove', doDrag, false); document.documentElement.removeEventListener('mouseup', stopDrag, false); } handle.addEventListener('mousedown', (e) => { e.preventDefault(); e.stopPropagation(); startX = e.clientX; startY = e.clientY; const rect = element.getBoundingClientRect(); startWidth = rect.width; startHeight = rect.height; element.style.left = rect.left + 'px'; element.style.right = 'auto'; document.documentElement.addEventListener('mousemove', doDrag, false); document.documentElement.addEventListener('mouseup', stopDrag, false); }, false); }
         
-        /** Open shape editor for new object creation. */
-        function handleAddNewObjectClick() { editingObject = null; showShapeEditPanel(); }
+        /** Show name prompt modal with message and default value. */
+        function showNamePromptModal(message, defaultValue, confirmCallback) {
+            namePromptMessage.textContent = message;
+            namePromptInput.value = defaultValue;
+            namePromptModal.style.display = 'flex';
+            namePromptAction = confirmCallback;
+            // Auto-focus and select text for easy editing
+            setTimeout(() => {
+                namePromptInput.focus();
+                namePromptInput.select();
+            }, 50);
+        }
+
+        /** Hide the name prompt modal and clear state. */
+        function hideNamePromptModal() {
+            namePromptModal.style.display = 'none';
+            namePromptAction = null;
+            pendingNoteObject = null;
+            isTyping = false;
+        }
+
+        /** Handle name prompt confirmation. */
+        function handleNamePromptConfirm() {
+            const enteredName = namePromptInput.value.trim();
+            if (enteredName && namePromptAction) {
+                namePromptAction(enteredName);
+            }
+            hideNamePromptModal();
+        }
+
+        /** Calculate next available shape number for default naming. */
+        function getNextShapeNumber() {
+            let highestNumber = 0;
+            for (const [id, data] of sceneData.entries()) {
+                if (data.name && data.name.startsWith('Shape ')) {
+                    const numberPart = data.name.substring(6);
+                    const num = parseInt(numberPart, 10);
+                    if (!isNaN(num) && num > highestNumber) {
+                        highestNumber = num;
+                    }
+                }
+            }
+            return highestNumber + 1;
+        }
+
+        /** Open shape editor for new object creation with name prompt. */
+        function handleAddNewObjectClick() {
+            const defaultName = `Shape ${getNextShapeNumber()}`;
+            showNamePromptModal('Enter a name for the new object:', defaultName, (name) => {
+                // Create the object directly with the confirmed name
+                const newId = crypto.randomUUID();
+                sceneData.set(newId, {
+                    name: name,
+                    shape: 'Box',
+                    color: '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0'),
+                    position: {
+                        x: (Math.random() - 0.5) * 20,
+                        y: Math.random() * 2 + 1,
+                        z: (Math.random() - 0.5) * 20
+                    },
+                    notes: [],
+                    decal: null
+                });
+                saveDataToStorage();
+                rebuildSceneFromData();
+            });
+        }
         
         /**
          * Save the active note's content. Sets or clears a "sticky note" decal if notes exist.
@@ -854,6 +958,7 @@
         function showShapeEditPanel(object = null) { editingObject = object; if (editingObject) { const data = editingObject.userData.data; document.getElementById('shape-name-input').value = data.name; document.getElementById('shape-type-select').value = data.shape; document.getElementById('shape-color-input').value = data.color; } else { document.getElementById('shape-name-input').value = "New Shape"; document.getElementById('shape-type-select').value = "Box"; document.getElementById('shape-color-input').value = "#" + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0'); } shapeEditPanel.style.display = 'flex'; }
         
         /** Create and select a new empty note for an object, auto-numbered. */
+        /** Create and select a new empty note for an object, with name prompt. */
         function addNewNote(object) {
             const objectId = object.userData.id;
             const objectData = sceneData.get(objectId);
@@ -869,14 +974,25 @@
                     }
                 }
             });
-            const newNoteTitle = `Note ${highestNoteNumber + 1}`;
-            const newNoteIndex = notes.length;
-            notes.push({title: newNoteTitle, content: ''});
-            objectData.notes = notes;
-            sceneData.set(objectId, objectData);
-            saveDataToStorage();
-            rebuildSceneFromData();
-            pendingNoteOpen = { objectId, noteIndex: newNoteIndex };
+            const defaultNoteTitle = `Note ${highestNoteNumber + 1}`;
+            
+            // Store the object so the confirm callback can access it
+            pendingNoteObject = object;
+            
+            showNamePromptModal('Enter a name for the new note:', defaultNoteTitle, (name) => {
+                if (!pendingNoteObject) return;
+                const objId = pendingNoteObject.userData.id;
+                const objData = sceneData.get(objId);
+                if (!objData) return;
+                const notesList = objData.notes || [];
+                const newNoteIndex = notesList.length;
+                notesList.push({title: name, content: ''});
+                objData.notes = notesList;
+                sceneData.set(objId, objData);
+                saveDataToStorage();
+                rebuildSceneFromData();
+                pendingNoteOpen = { objectId: objId, noteIndex: newNoteIndex };
+            });
         }
 
         /** Open the main note editor populated with the selected note. */
