@@ -15,6 +15,20 @@ You must read and follow the guidance in `handover_instructions.md` before makin
 - Deployment: Target is GitHub Pages.
 - Edit/test: Edit `index.html`, open/reload in a browser to see changes.
 
+## Iteration Log
+- All feature additions, fixes, or noteworthy iterations MUST include a new entry in `ITERATION_LOG.md` at the repo root.
+- Entry format:
+	- Date: YYYY-MM-DD
+	- Title: Short, action-oriented summary
+	- Description: 1–3 sentences on intent, what changed, and why
+	- Files touched: Backticked list of key files
+	- Notes (optional): Decisions, tradeoffs, follow-ups
+ - Always add new entries to the TOP of the file.
+
+## Pull Requests
+- Use the PR template at `.github/pull_request_template.md`.
+- Ensure the checklist is completed, including the `ITERATION_LOG.md` entry and local smoke checks.
+
 ## Current Key Features (as implemented)
 - 3D space scene with procedural star field sky.
 - Camera: WASD/QE for movement, mouse-drag for rotation, Tab cycles focus, with simple momentum for smooth motion.
