@@ -164,7 +164,7 @@
         .note-editor .note-delete-btn:hover, #delete-shape-btn:hover {
             background-color: rgba(200, 48, 62, 0.9);
         }
-        #delete-note svg { width: 1.2em; height: 1.2em; }
+        .note-delete-btn svg { width: 1.2em; height: 1.2em; }
         #delete-shape-btn { display: flex; align-items: center; gap: 6px; margin-right: auto; }
         #delete-shape-btn svg { width: 16px; height: 16px; }
 
@@ -506,7 +506,12 @@
         const objects = new Map();
         const decals = new Map();
         // Selection + UI state
-        let selectedObject = null, editingObject = null, lastIntersection = null, pendingNoteOpen = null, isDraggingCamera = false;
+        // Selection and UI state
+        let selectedObject = null;
+        let editingObject = null;
+        let lastIntersection = null;
+        let pendingNoteOpen = null;
+        let isDraggingCamera = false;
         const openEditors = new Map();
         let nextEditorZ = 1100;
         let activeObjectUI = null, cycleIndex = -1, isCycling = false;
@@ -1094,8 +1099,8 @@
             const key = getEditorKey(objectId, noteIndex);
             if (openEditors.has(key)) {
                 const existing = openEditors.get(key);
-                syncEditorContent(existing);
-                focusEditor(existing);
+            const templateRoot = noteEditorTemplate.content.firstElementChild;
+            if (!templateRoot) throw new Error('Note editor template with class "note-editor" is missing in #note-editor-template. Please ensure the template exists and has a root element with the correct structure.');
                 return existing;
             }
 
