@@ -3,1680 +3,1411 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Note Taker</title>
-    <!--
-      AstroMind-Demo single-file application
-      - Vision: Analog Sci‑Fi aesthetic (CRT vibes, frosty glass UI) supporting spatial cognition
-      - Engine: Three.js (no bundler). Persistence via localStorage only. Deployed as a static page.
-      - Interaction: WASD/QE + mouse, Tab to cycle planets, click planets to open on-planet UI.
-      - Accessibility: UI disables navigation when typing; distance-based UI auto-hide reduces clutter.
-      Editing: All logic lives here. Reload the page after edits.
-    -->
+    <title>AstroMind Demo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
-        /* ===============================
-           Base + Global Aesthetic
-           =============================== */
+        :root {
+            color-scheme: dark;
+            --bg: #02010a;
+            --panel-bg: rgba(12, 12, 18, 0.84);
+            --panel-border: rgba(125, 199, 255, 0.45);
+            --accent: #6bc7ff;
+            --accent-strong: #91f0ff;
+            --delete: #ff5f6f;
+            --font-family: 'Space Grotesk', system-ui, sans-serif;
+        }
+        * { box-sizing: border-box; }
         body {
-            font-family: 'Inter', sans-serif;
             margin: 0;
             overflow: hidden;
-            background-color: #000005;
-            color: #333;
+            font-family: var(--font-family);
+            background: radial-gradient(circle at 20% 20%, rgba(20, 35, 75, 0.65), transparent 55%),
+                        radial-gradient(circle at 80% 35%, rgba(54, 18, 85, 0.45), transparent 60%),
+                        var(--bg);
+            color: #f7fbff;
+            letter-spacing: 0.02em;
         }
-        /* Full-screen WebGL mount */
         #scene-container {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            inset: 0;
+            width: 100vw;
+            height: 100vh;
             cursor: grab;
         }
-        #scene-container:focus {
-            outline: none; /* Removes the blue outline on focus */
-        }
-
-        /* ===============================
-           Note Editor Panel (frosty glass)
-           =============================== */
-        .note-editor {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            width: 300px;
-            min-width: 250px; /* Minimum resize width */
-            min-height: 250px; /* Minimum resize height */
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 0; /* Square corners */
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            border: 1px solid rgba(255, 255, 255, 0.5);
-            padding-top: 30px; /* Make space for drag handle and close button */
-            display: none;
-            flex-direction: column;
-            gap: 15px;
-            max-height: calc(100vh - 40px);
-            overflow: hidden; /* Changed from auto to hidden for resize */
-            z-index: 1000;
-            transform-origin: center;
-        }
-
-        /* CRT "power-off" close animation for note editor */
-        .note-editor.closing {
-            animation: crt-flicker-out 400ms forwards;
-        }
-
-        .note-editor.closing > * {
-            visibility: hidden; /* Hide content during animation */
-        }
-
-        @keyframes crt-flicker-out {
-            0% { transform: scale(1, 1); background-color: rgba(255, 255, 255, 0.1); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
-            40% { transform: scale(1, 0.01); background-color: white; backdrop-filter: blur(0px); -webkit-backdrop-filter: blur(0px); }
-            80% { transform: scale(0.005, 0.005); background-color: white; }
-            100% { transform: scale(0, 0); background-color: white; }
-        }
-
-        /* Drag handle targets mouse movement only (no visible chrome) */
-        .note-editor .drag-handle {
+        #scene-container:active { cursor: grabbing; }
+        .ui-overlay { position: fixed; inset: 0; pointer-events: none; }
+        #hud {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: calc(100% - 30px); /* Leave space for close button */
-            height: 30px;
-            cursor: move;
+            top: 20px;
+            left: 20px;
+            padding: 16px 18px;
+            max-width: 320px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(145, 240, 255, 0.25);
+            backdrop-filter: blur(6px);
+            mix-blend-mode: screen;
+            pointer-events: auto;
         }
-
-        .note-editor .note-title {
-            font-size: 1.2em;
-            font-weight: bold;
-            color: #fff;
-            border: none;
-            background: transparent;
-            border-bottom: 2px solid rgba(255, 255, 255, 0.5);
-            padding: 8px 0;
-            transition: border-color 0.3s;
-            flex-shrink: 0;
-            margin: 0 20px; /* Add margin to align with padding */
+        #hud h1 {
+            margin: 0 0 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            color: var(--accent-strong);
         }
-        .note-editor .note-title:focus { outline: none; border-bottom-color: #fff; }
-        .note-editor .note-title::placeholder { color: rgba(255, 255, 255, 0.7); }
-
-        .note-editor .note-content {
-            font-size: 1em;
-            min-height: 150px;
-            resize: none;
-            background: rgba(255, 255, 255, 0.2);
-            color: #fff;
-            border: 1px solid rgba(255, 255, 255, 0.5);
-            border-radius: 0; /* Square corners */
-            padding: 10px;
-            transition: border-color 0.3s, box-shadow 0.3s;
-            flex-grow: 1;
-            margin: 0 20px;
+        #hud p {
+            margin: 4px 0;
+            font-size: 0.82rem;
+            line-height: 1.3;
+            opacity: 0.85;
         }
-        .note-editor .note-content:focus { outline: none; border-color: #fff; box-shadow: 0 0 5px rgba(255, 255, 255, 0.5); }
-        .note-editor .note-content::placeholder { color: rgba(255, 255, 255, 0.7); }
-        /* Action buttons in note editor */
-        .button-group {
-            display: flex;
-            justify-content: flex-end; /* Align buttons to the right */
-            gap: 10px;
-            flex-shrink: 0;
-            margin: 0 20px;
-            padding-bottom: 20px;
+        .hud-shortcuts {
+            margin-top: 12px;
+            display: grid;
+            gap: 4px;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            opacity: 0.7;
         }
-
-        .btn {
-            padding: 10px 15px;
-            border: 1px solid rgba(255, 255, 255, 0.5);
-            border-radius: 0; /* Square corners */
-            cursor: pointer;
-            font-weight: bold;
-            transition: background-color 0.3s, transform 0.2s;
-            background-color: rgba(255, 255, 255, 0.4);
-            color: #fff;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            flex-grow: 0;
-            flex-shrink: 0;
-        }
-
-        .btn:hover {
-            background-color: rgba(255, 255, 255, 0.6);
-            transform: translateY(-2px);
-        }
-
-        .note-editor .note-save-btn {
-            background-color: rgba(40, 167, 69, 0.7);
-            border-color: rgba(40, 167, 69, 1);
-        }
-        .note-editor .note-save-btn:hover {
-             background-color: rgba(33, 136, 56, 0.9);
-        }
-
-        .note-editor .note-delete-btn, #delete-planet-btn {
-            background-color: rgba(220, 53, 69, 0.7);
-            border-color: rgba(220, 53, 69, 1);
-        }
-        .note-editor .note-delete-btn:hover, #delete-planet-btn:hover {
-            background-color: rgba(200, 48, 62, 0.9);
-        }
-        .note-delete-btn svg { width: 1.2em; height: 1.2em; }
-        #delete-planet-btn { display: flex; align-items: center; gap: 6px; margin-right: auto; }
-        #delete-planet-btn svg { width: 16px; height: 16px; }
-
-        /* Global "Create Planet" CTA */
-        #add-planet-btn {
-            position: fixed;
-            bottom: 20px;
+        .create-planet-btn {
+            position: absolute;
+            bottom: 26px;
             left: 50%;
             transform: translateX(-50%);
-            padding: 12px 25px;
-            background-color: #28a745;
-            color: white;
+            padding: 12px 28px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--bg);
+            background: linear-gradient(120deg, #8afaff 0%, #7ea2ff 100%);
             border: none;
-            border-radius: 30px;
-            font-size: 1em;
-            font-weight: bold;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            border-radius: 999px;
+            box-shadow: 0 12px 35px rgba(54, 116, 255, 0.35);
             cursor: pointer;
-            transition: background-color 0.3s, transform 0.2s;
-            z-index: 1001;
-        }
-        #add-planet-btn:hover { background-color: #218838; transform: translateX(-50%) translateY(-2px); }
-
-        /* On-screen input help (non-blocking) */
-        .instructions { position: fixed; top: 20px; left: 20px; background: rgba(0, 0, 0, 0.6); color: white; padding: 10px 15px; border-radius: 8px; font-size: 0.9em; }
-
-        /* ===============================
-           Modal (confirm destructive action)
-           =============================== */
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); display: flex; justify-content: center; align-items: center; z-index: 3000; }
-        .modal-content {
-            background: rgba(20, 20, 30, 0.9);
-            color: white;
-            padding: 25px;
-            border-radius: 0;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-            text-align: center;
-            width: 90%;
-            max-width: 400px;
-            border: 1px solid rgba(255, 255, 255, 0.5);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            z-index: 3001;
-        }
-        .modal-buttons { display: flex; justify-content: center; gap: 15px; margin-top: 20px; }
-        .modal-content h3 { margin: 0 0 15px 0; color: #fff; font-weight: 600; }
-        .modal-input {
-            width: 100%;
-            padding: 10px;
-            font-size: 1em;
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.5);
-            border-radius: 0;
-            color: #fff;
-            transition: border-color 0.3s, box-shadow 0.3s;
-        }
-        .modal-input:focus {
-            outline: none;
-            border-color: rgba(255, 255, 255, 0.9);
-            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.15);
-        }
-        .input-error {
-            border-color: rgba(220, 53, 69, 1) !important;
-            box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.4) !important;
-        }
-        #modal-confirm-btn { background-color: rgba(220, 53, 69, 0.7); border-color: rgba(220, 53, 69, 1); }
-        #modal-confirm-btn:hover { background-color: rgba(200, 48, 62, 0.9); }
-        #modal-cancel-btn { background-color: rgba(255, 255, 255, 0.2); border-color: rgba(255,255,255,0.5); }
-        #modal-cancel-btn:hover { background-color: rgba(255, 255, 255, 0.4); }
-        #name-prompt-confirm-btn { background-color: rgba(40, 167, 69, 0.7); border-color: rgba(40, 167, 69, 1); }
-        #name-prompt-confirm-btn:hover { background-color: rgba(33, 136, 56, 0.9); }
-        #name-prompt-cancel-btn { background-color: rgba(255, 255, 255, 0.2); border-color: rgba(255,255,255,0.5); }
-        #name-prompt-cancel-btn:hover { background-color: rgba(255, 255, 255, 0.4); }
-
-        /* Editor resize affordances */
-        .note-editor .resize-handle {
-            position: absolute;
-            width: 18px;
-            height: 18px;
-            z-index: 1001;
             pointer-events: auto;
-            transition: filter 0.2s ease;
         }
-        .note-editor .resize-handle-bl {
-            bottom: 5px;
-            left: 5px;
-            cursor: nesw-resize;
-            background: linear-gradient(225deg, transparent 50%, rgba(255, 255, 255, 0.75) 50%);
+        .create-planet-btn:hover {
+            transform: translateX(-50%) translateY(-3px);
+            box-shadow: 0 18px 40px rgba(54, 116, 255, 0.55);
         }
-        .note-editor .resize-handle-br {
-            bottom: 5px;
-            right: 5px;
-            cursor: nwse-resize;
-            background: linear-gradient(135deg, transparent 50%, rgba(255, 255, 255, 0.75) 50%);
+        .create-planet-btn:active {
+            transform: translateX(-50%) translateY(0px) scale(0.99);
         }
-        .note-editor .resize-handle-bl:hover, .note-editor .resize-handle-br:hover {
-            filter: brightness(1.25);
+        .entity-panel {
+            min-width: 240px;
+            max-width: 320px;
+            color: #e9f3ff;
+            background: rgba(12, 12, 18, 0.84);
+            border: 1px solid var(--panel-border);
+            box-shadow: 0 22px 40px rgba(0, 0, 0, 0.4);
+            padding: 14px 16px;
+            backdrop-filter: blur(10px) saturate(140%);
+            pointer-events: auto;
+            opacity: 0;
+            transition: opacity 220ms ease-out, transform 220ms ease-out;
+            transform: translate3d(0, 0, 0) scale(0.98);
         }
-
-        /* Minimal close icon (kept simple for readability & CRT feel) */
-        .note-editor .note-close-btn { position: absolute; top: 5px; right: 5px; width: 20px; height: 20px; cursor: pointer; opacity: 0.8; transition: opacity 0.2s; }
-        .note-editor .note-close-btn:hover { opacity: 1; }
-        .note-editor .note-close-btn::before, .note-editor .note-close-btn::after { content: ''; position: absolute; top: 9px; left: 2px; width: 16px; height: 2px; background-color: #fff; }
-        .note-editor .note-close-btn::before { transform: rotate(45deg); }
-        .note-editor .note-close-btn::after { transform: rotate(-45deg); }
-        #planet-close-btn { position: absolute; top: 8px; right: 10px; width: 18px; height: 18px; cursor: pointer; opacity: 0.75; transition: opacity 0.2s; }
-        #planet-close-btn:hover { opacity: 1; }
-        #planet-close-btn::before, #planet-close-btn::after { content: ''; position: absolute; top: 8px; left: 2px; width: 14px; height: 2px; background-color: #fff; }
-        #planet-close-btn::before { transform: rotate(45deg); }
-        #planet-close-btn::after { transform: rotate(-45deg); }
-
-        /* ===============================
-           On-planet UI card (CSS2D label)
-           =============================== */
-        .planet-ui {
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            padding: 10px;
-            border: 1px solid rgba(255,255,255,0.4);
-            width: 200px;
-            pointer-events: auto !important;
-            cursor: default;
+        .entity-panel.visible {
+            opacity: 1;
+            transform: translate3d(0, 0, 0) scale(1);
         }
-        .planet-ui-header {
+        .entity-panel.away { opacity: 0; }
+        .entity-panel h2 {
+            margin: 0 0 10px;
+            font-size: 1rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--accent-strong);
+        }
+        .entity-panel .type-label {
+            display: inline-block;
+            padding: 2px 8px;
+            margin-bottom: 10px;
+            font-size: 0.7rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.75);
+            border: 1px solid rgba(145, 240, 255, 0.3);
+        }
+        .entity-panel label {
+            display: block;
+            font-size: 0.75rem;
+            letter-spacing: 0.1em;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            color: rgba(148, 214, 255, 0.85);
+        }
+        .entity-panel input[type="text"],
+        .entity-panel textarea,
+        .entity-panel select {
+            width: 100%;
+            background: rgba(6, 12, 24, 0.82);
+            border: 1px solid rgba(122, 198, 255, 0.32);
+            color: #f1fbff;
+            font-family: var(--font-family);
+            padding: 8px 10px;
+            font-size: 0.85rem;
+            letter-spacing: 0.03em;
+            resize: none;
+        }
+        .entity-panel textarea { min-height: 96px; }
+        .entity-panel .panel-row { margin-bottom: 12px; }
+        .entity-panel .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .entity-panel button {
+            cursor: pointer;
+            padding: 8px 10px;
+            background: rgba(99, 200, 255, 0.2);
+            border: 1px solid rgba(99, 200, 255, 0.4);
+            color: #d8f6ff;
+            text-transform: uppercase;
+            font-size: 0.7rem;
+            letter-spacing: 0.18em;
+        }
+        .entity-panel button:hover { background: rgba(155, 235, 255, 0.3); }
+        .entity-panel button.delete {
+            background: rgba(255, 95, 111, 0.15);
+            border-color: rgba(255, 95, 111, 0.5);
+            color: #ffb9c1;
+        }
+        .entity-panel .relationship-list {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(122, 198, 255, 0.2);
+        }
+        .entity-panel .relationship-list h3 {
+            margin: 0 0 6px;
+            font-size: 0.75rem;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: rgba(148, 214, 255, 0.7);
+        }
+        .entity-panel .relationship-list ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: grid;
+            gap: 6px;
+        }
+        .entity-panel .relationship-list li {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 1px solid rgba(255,255,255,0.4);
-            padding-bottom: 5px;
-            margin-bottom: 5px;
+            padding: 6px 8px;
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(122, 198, 255, 0.25);
+            font-size: 0.72rem;
         }
-        .planet-ui-header h3 { margin: 0; font-size: 1.2em; }
-        .edit-planet-btn { background: none; border: none; color: white; cursor: pointer; padding: 2px; }
-        .edit-planet-btn svg { width: 16px; height: 16px; }
-        .notes-list { list-style: none; padding: 0; margin: 0; }
-        .notes-list li { padding: 5px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.2); }
-        .notes-list li:hover { background: rgba(255,255,255,0.2); }
-        .notes-list li:last-child { border-bottom: none; }
-        .add-note-btn { background: rgba(255,255,255,0.2); border: none; color: white; width: 100%; padding: 5px; margin-top: 5px; cursor: pointer; transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease; }
-        .add-note-btn:hover, .add-note-btn:focus { background: rgba(255,255,255,0.35); transform: translateY(-1px); box-shadow: 0 0 6px rgba(255,255,255,0.25); outline: 2px solid rgba(255,255,255,0.7); outline-offset: 2px; }
-
-        /* Planet edit panel (planet properties) */
-        #planet-edit-panel {
-             position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 300px;
-            background: rgba(20, 20, 30, 0.9);
-            border-radius: 0;
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            border: 1px solid rgba(255, 255, 255, 0.5);
-            padding: 20px;
-            display: none;
-            flex-direction: column;
-            gap: 15px;
-            z-index: 1002;
-            color: white;
+        .entity-panel .relationship-list li button {
+            padding: 4px 6px;
+            font-size: 0.6rem;
+            letter-spacing: 0.12em;
         }
-        .form-group { display: flex; flex-direction: column; gap: 5px; }
-        .form-group input, .form-group select { background: rgba(255, 255, 255, 0.2); color: #fff; border: 1px solid rgba(255, 255, 255, 0.5); padding: 8px; }
-        .form-group select option { color: black; background-color: white; }
-        .form-group input[type="color"] { padding: 2px; height: 35px; }
-        
-        /* Screen-space connector line from editor to focused planet */
-        .note-connector {
-            position: fixed;
-            height: 2px;
-            background-color: #000;
-            transform-origin: 0 50%;
+        .crt-overlay {
             pointer-events: none;
-            display: none;
-            z-index: 998;
-            box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.4);
+            position: fixed;
+            inset: 0;
+            background: repeating-linear-gradient(0deg, rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 1px, transparent 1px, transparent 3px);
+            mix-blend-mode: screen;
+            opacity: 0.35;
         }
+        .crt-overlay::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at center, transparent 55%, rgba(0,0,0,0.65));
+        }
+        #relationship-modal {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.72);
+            z-index: 4000;
+        }
+        #relationship-modal .modal-body {
+            width: min(420px, 90vw);
+            background: rgba(10, 16, 30, 0.92);
+            border: 1px solid rgba(145, 240, 255, 0.3);
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.55);
+            padding: 20px;
+        }
+        #relationship-modal h2 {
+            margin: 0 0 12px;
+            font-size: 1rem;
+            letter-spacing: 0.16em;
+            color: var(--accent-strong);
+        }
+        #relationship-modal label {
+            display: block;
+            font-size: 0.75rem;
+            letter-spacing: 0.14em;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            color: rgba(148, 214, 255, 0.85);
+        }
+        #relationship-modal select,
+        #relationship-modal input[type="text"] {
+            width: 100%;
+            margin-bottom: 12px;
+            padding: 8px;
+            background: rgba(6, 12, 24, 0.82);
+            border: 1px solid rgba(122, 198, 255, 0.32);
+            color: #f1fbff;
+            font-family: var(--font-family);
+        }
+        #relationship-modal .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+        #relationship-modal button {
+            padding: 8px 16px;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            border: 1px solid rgba(122, 198, 255, 0.35);
+            background: rgba(99, 200, 255, 0.2);
+            cursor: pointer;
+        }
+        #relationship-modal button.primary {
+            background: rgba(145, 240, 255, 0.25);
+            border-color: rgba(145, 240, 255, 0.5);
+        }
+        .toast {
+            position: absolute;
+            bottom: 26px;
+            right: 26px;
+            pointer-events: none;
+            background: rgba(0, 0, 0, 0.55);
+            border: 1px solid rgba(145, 240, 255, 0.3);
+            padding: 12px 18px;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 200ms ease, transform 200ms ease;
+        }
+        .toast.visible { opacity: 1; transform: translateY(0); }
+        .selection-ring {
+            position: absolute;
+            pointer-events: none;
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            border: 2px solid rgba(145, 240, 255, 0.35);
+            transform: translate(-50%, -50%);
+            mix-blend-mode: screen;
+            opacity: 0;
+            transition: opacity 180ms ease;
+        }
+        .selection-ring.visible { opacity: 1; }
     </style>
-    
-        <!-- Editable settings (single-file friendly). You can tweak values below. -->
-            <script type="application/json" id="app-settings">
-            {
-                "cycle": {
-                    "durationMs": 350,
-                    "distance": 10,
-                    "easing": "easeInOutCubic"
-                },
-                "movement": {
-                    "moveSpeed": 0.1,
-                    "damping": 0.93
-                },
-                        "controls": {
-                            "enableDamping": true,
-                            "dampingFactor": 0.05,
-                            "minDistance": 3,
-                            "maxDistance": 50,
-                            "maxPolarAngle": 1.494
-                        },
-                "post": {
-                    "filmNoise": 0.3,
-                    "filmScanlineIntensity": 0.2,
-                    "filmScanlineCount": 1024,
-                    "filmGrayscale": false,
-                    "rgbOffset": 0.0015,
-                    "vignetteStart": 0.4,
-                    "vignetteEnd": 0.9
-                },
-                "ui": {
-                    "labelHideDistance": 20,
-                    "showConnector": true
-                },
-                "notes": {
-                    "decalSize": 0.75,
-                    "decalOpacity": 0.9
-                }
-            }
-            </script>
 </head>
 <body>
-    <!-- WebGL mount and 2D overlay renderers attach to this container -->
     <div id="scene-container" tabindex="0"></div>
-    <div id="note-editors-root"></div>
-    <template id="note-editor-template">
-        <div class="note-editor" style="display: none;">
-            <div class="drag-handle"></div>
-            <div class="note-close-btn" title="Close"></div>
-            <input type="text" class="note-title" placeholder="Note Title">
-            <textarea class="note-content" placeholder="Write your note here..."></textarea>
-            <div class="button-group">
-                <button class="btn note-save-btn">Save</button>
-                <button class="btn note-delete-btn" title="Delete">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                        <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z"/>
-                        <path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3V2h11v1z"/>
-                    </svg>
-                </button>
+    <div class="ui-overlay">
+        <div id="hud">
+            <h1>AstroMind // Idea-Verse</h1>
+            <p>Organize planets, moons, and satellites to map your thoughts in deep space. Relationships become constellations.</p>
+            <div class="hud-shortcuts">
+                <span>WASD + QE — Flight</span>
+                <span>Hold Mouse — Look</span>
+                <span>Tab — Cycle Planets</span>
+                <span>Click Object — Select</span>
             </div>
-            <div class="resize-handle resize-handle-bl"></div>
-            <div class="resize-handle resize-handle-br"></div>
+        </div>
+        <button class="create-planet-btn" id="create-planet-btn">+ New Planet</button>
+        <div class="toast" id="toast"></div>
+        <div class="selection-ring" id="selection-ring"></div>
+    </div>
+    <div class="crt-overlay"></div>
+
+    <div id="relationship-modal">
+        <div class="modal-body">
+            <h2>Create Relationship</h2>
+            <label for="relationship-target">Connect To</label>
+            <select id="relationship-target"></select>
+            <label for="relationship-label">Label (optional)</label>
+            <input type="text" id="relationship-label" placeholder="Constellation name">
+            <div class="modal-actions">
+                <button id="relationship-cancel">Cancel</button>
+                <button class="primary" id="relationship-confirm">Link</button>
+            </div>
+        </div>
+    </div>
+
+    <template id="entity-panel-template">
+        <div class="entity-panel">
+            <div class="panel-row">
+                <span class="type-label"></span>
+                <h2 class="panel-title"></h2>
+            </div>
+            <div class="panel-row">
+                <label>Name</label>
+                <input type="text" class="entity-name-input" placeholder="Enter name">
+            </div>
+            <div class="panel-row">
+                <label>Summary</label>
+                <textarea class="entity-description" placeholder="What lives here?"></textarea>
+            </div>
+            <div class="panel-row color-row">
+                <label>Color</label>
+                <input type="color" class="entity-color" value="#6bc7ff">
+            </div>
+            <div class="actions"></div>
+            <div class="relationship-list">
+                <h3>Relationships</h3>
+                <ul></ul>
+            </div>
         </div>
     </template>
-
-    <!-- Lightweight instructions overlay to reduce cognitive load for first-time users -->
-    <div class="instructions">
-        <p>Use WASD/Arrow keys to move.</p>
-        <p>Q/E to move vertically.</p>
-        <p>Tab to cycle between planets.</p>
-        <p>Click a planet to view its notes.</p>
-        <p>UI hides when you move away.</p>
-    </div>
-    <!-- Note editors are instantiated from the template above -->
-    <!-- Edit currently selected planet's geometry, name, and color -->
-    <div id="planet-edit-panel">
-        <div id="planet-close-btn" title="Cancel"></div>
-        <h3>Edit Planet</h3>
-        <div class="form-group">
-            <label for="planet-name-input">Name</label>
-            <input type="text" id="planet-name-input">
-        </div>
-        <div class="form-group">
-            <label for="shape-type-select">Shape</label>
-            <select id="shape-type-select">
-                <option value="Box">Box</option>
-                <option value="Sphere">Sphere</option>
-                <option value="Cone">Cone</option>
-                <option value="Torus">Torus</option>
-            </select>
-        </div>
-         <div class="form-group">
-            <label for="planet-color-input">Color</label>
-            <input type="color" id="planet-color-input" value="#ffffff">
-        </div>
-        <div class="button-group">
-            <button id="delete-planet-btn" class="btn" title="Delete Planet">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                    <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z"/>
-                    <path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3V2h11v1z"/>
-                </svg>
-                Delete
-            </button>
-            <button id="save-planet-btn" class="btn">Save</button>
-            <button id="close-planet-edit-btn" class="btn">Cancel</button>
-        </div>
-    </div>
-
-    <button id="add-planet-btn">Create Planet</button>
-
-    <!-- Destructive action confirmation modal -->
-    <div id="confirm-modal" class="modal-overlay" style="display: none;">
-        <div class="modal-content">
-            <p id="confirm-message">Are you sure?</p>
-            <div class="modal-buttons">
-                <button id="modal-confirm-btn" class="btn">Yes, Delete</button>
-                <button id="modal-cancel-btn" class="btn">Cancel</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Generic name prompt modal for new planets and notes -->
-    <div id="name-prompt-modal" class="modal-overlay" style="display: none;">
-        <div class="modal-content">
-            <h3 id="name-prompt-title">Name Item</h3>
-            <input id="name-prompt-input" class="modal-input" type="text" autocomplete="off">
-            <div class="modal-buttons">
-                <button id="name-prompt-confirm-btn" class="btn">Save</button>
-                <button id="name-prompt-cancel-btn" class="btn">Cancel</button>
-            </div>
-        </div>
-    </div>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS2DRenderer.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/FilmPass.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/FilmShader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/FilmPass.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/geometries/DecalGeometry.js"></script>
-    
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/RGBShiftShader.js"></script>
     <script type="module">
-        // =================================================================================
-        // Overview
-        // =================================================================================
-        /**
-         * Spatial note-taking demo with an Analog Sci‑Fi aesthetic.
-         * - All state is persisted to localStorage as a Map of planetId -> PlanetData.
-         * - 3D planets have on-planet UI (CSS2D labels). A separate draggable editor handles note content.
-         * - Keyboard navigation (WASD/QE) is disabled while typing to support focus and accessibility.
-         */
-
-        // =================================================================================
-        // SECTION: GLOBAL VARIABLES & STATE
-        // =================================================================================
-    /** @type {THREE.Scene} */
-    let scene, camera, renderer, controls, raycaster, mouse, composer, clock, labelRenderer, filmPass, decalMaterial, retroPass;
-        /** Map of planetId -> THREE.Mesh (with .label: CSS2DObject) */
-        const planets = new Map();
-        const decals = new Map();
-        // Selection + UI state
-        // Selection and UI state
-        let selectedPlanet = null;
-        let editingPlanet = null;
-        let lastIntersection = null;
-        let pendingNoteOpen = null;
-        let isDraggingCamera = false;
-        /** Map of `${planetId}:${noteIndex}` -> editor state */
-        const openEditors = new Map();
-        let nextEditorZ = 1100;
-        let activePlanetUI = null, cycleIndex = -1, isCycling = false;
-    const keyState = {};
-    let isTyping = false;
-    // Settings state
-    let SETTINGS = {};
-    // Movement parameters (initialized from settings in init())
-    let moveSpeed = 0.1, DAMPING = 0.93; // Simple momentum for camera movement
-        let cameraVelocity = new THREE.Vector3();
-        // DOM refs split for readability (was a single chained declaration)
-        const sceneContainer = document.getElementById('scene-container');
-        const editorsRoot = document.getElementById('note-editors-root');
-        const noteEditorTemplate = document.getElementById('note-editor-template');
-        const addPlanetBtn = document.getElementById('add-planet-btn');
-    const confirmModal = document.getElementById('confirm-modal');
-    const confirmMessage = document.getElementById('confirm-message');
-        const modalConfirmBtn = document.getElementById('modal-confirm-btn');
-        const modalCancelBtn = document.getElementById('modal-cancel-btn');
-        const planetEditPanel = document.getElementById('planet-edit-panel');
-        const planetCloseBtn = document.getElementById('planet-close-btn');
-        const planetNameInput = document.getElementById('planet-name-input');
-        const shapeTypeSelect = document.getElementById('shape-type-select');
-        const planetColorInput = document.getElementById('planet-color-input');
-        const deletePlanetBtn = document.getElementById('delete-planet-btn');
-        const savePlanetBtn = document.getElementById('save-planet-btn');
-        const closePlanetEditBtn = document.getElementById('close-planet-edit-btn');
-        const namePromptModal = document.getElementById('name-prompt-modal');
-        const namePromptTitle = document.getElementById('name-prompt-title');
-        const namePromptInput = document.getElementById('name-prompt-input');
-        const namePromptConfirmBtn = document.getElementById('name-prompt-confirm-btn');
-        const namePromptCancelBtn = document.getElementById('name-prompt-cancel-btn');
-        let deleteAction = null;
-        let activeNamePrompt = null;
-        let wasTypingBeforePrompt = false;
-        let wasTypingBeforePlanetEdit = false;
-
-        planetNameInput.addEventListener('input', () => {
-            if (planetNameInput.classList.contains('input-error')) {
-                planetNameInput.classList.remove('input-error');
-            }
-        });
-        
-        // =================================================================================
-        // SECTION: SETTINGS LOADER (single-file + localStorage overrides)
-        // =================================================================================
-        const SETTINGS_STORAGE_KEY = 'astroMind-settings-overrides';
-        function deepMerge(target, src) {
-            const out = Array.isArray(target) ? [...target] : { ...target };
-            for (const [k, v] of Object.entries(src || {})) {
-                if (v && typeof v === 'object' && !Array.isArray(v)) {
-                    out[k] = deepMerge(out[k] || {}, v);
-                } else {
-                    out[k] = v;
-                }
-            }
-            return out;
-        }
-        function loadSettings() {
-            try {
-                const tag = document.getElementById('app-settings');
-                const base = tag ? JSON.parse(tag.textContent) : {};
-                const overridesStr = localStorage.getItem(SETTINGS_STORAGE_KEY);
-                const overrides = overridesStr ? JSON.parse(overridesStr) : {};
-                SETTINGS = deepMerge(base, overrides);
-            } catch (e) {
-                console.warn('Failed to load settings, using defaults', e);
-                SETTINGS = { cycle: { durationMs: 350, distance: 10, easing: 'easeInOutCubic' }, movement: { moveSpeed: 0.1, damping: 0.93 } };
-            }
-        }
-        function getSetting(path, fallback) {
-            const parts = path.split('.');
-            let cur = SETTINGS;
-            for (const p of parts) {
-                if (cur && Object.prototype.hasOwnProperty.call(cur, p)) cur = cur[p];
-                else return fallback;
-            }
-            return cur;
-        }
-        function saveSettingsOverrides(partial) {
-            const overridesStr = localStorage.getItem(SETTINGS_STORAGE_KEY);
-            const overrides = overridesStr ? JSON.parse(overridesStr) : {};
-            const newOverrides = deepMerge(overrides, partial);
-            localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(newOverrides));
-            SETTINGS = deepMerge(SETTINGS, partial);
-        }
-        function applySettings() {
-            // Movement
-            moveSpeed = getSetting('movement.moveSpeed', moveSpeed);
-            DAMPING = getSetting('movement.damping', DAMPING);
-            // Controls
-            if (controls) {
-                controls.enableDamping = getSetting('controls.enableDamping', controls.enableDamping);
-                controls.dampingFactor = getSetting('controls.dampingFactor', controls.dampingFactor);
-                controls.minDistance = getSetting('controls.minDistance', controls.minDistance);
-                controls.maxDistance = getSetting('controls.maxDistance', controls.maxDistance);
-                controls.maxPolarAngle = getSetting('controls.maxPolarAngle', controls.maxPolarAngle);
-                controls.update();
-            }
-            // Post effects
-            if (filmPass) {
-                filmPass.uniforms.nIntensity.value = getSetting('post.filmNoise', filmPass.uniforms.nIntensity.value);
-                filmPass.uniforms.sIntensity.value = getSetting('post.filmScanlineIntensity', filmPass.uniforms.sIntensity.value);
-                filmPass.uniforms.sCount.value = getSetting('post.filmScanlineCount', filmPass.uniforms.sCount.value);
-                filmPass.uniforms.grayscale.value = getSetting('post.filmGrayscale', filmPass.uniforms.grayscale.value);
-            }
-            // Retro shader pass uniforms (if exists)
-            if (typeof retroPass !== 'undefined' && retroPass && retroPass.uniforms) {
-                retroPass.uniforms.rgbOffset.value = getSetting('post.rgbOffset', retroPass.uniforms.rgbOffset.value);
-                retroPass.uniforms.vigStart.value = getSetting('post.vignetteStart', retroPass.uniforms.vigStart.value);
-                retroPass.uniforms.vigEnd.value = getSetting('post.vignetteEnd', retroPass.uniforms.vigEnd.value);
-            }
-            // Decals: update opacity live
-            for (const [id, decal] of decals.entries()) {
-                if (decal && decal.material) {
-                    decal.material.opacity = getSetting('notes.decalOpacity', decal.material.opacity);
-                    decal.material.needsUpdate = true;
-                }
-            }
-        }
-        // Small API for runtime tweaks from DevTools
-        window.AstroMind = {
-            get settings() { return SETTINGS; },
-            set(partial) {
-                saveSettingsOverrides(partial);
-                applySettings();
-            },
-            resetSettings() {
-                localStorage.removeItem(SETTINGS_STORAGE_KEY);
-                loadSettings();
-                applySettings();
-            },
-        };
-
-        // =================================================================================
-        // SECTION: LOCAL STORAGE PERSISTENCE
-        // =================================================================================
-        /**
-         * Storage key for serializing the scene graph state to localStorage
-         */
-        const STORAGE_KEY = 'astroMind-scene-data'; // Kept stable to preserve existing localStorage saves
-        /**
-         * @typedef {{title: string, content: string}} Note
-         * @typedef {{x:number,y:number,z:number}} Vec3Plain
-         * @typedef {{position: Vec3Plain, orientation: {x:number,y:number,z:number}}} DecalData
-         * @typedef {{
-         *   name: string,
-         *   shape: 'Box'|'Sphere'|'Cone'|'Torus',
-         *   color: string,
-         *   position: Vec3Plain,
-         *   notes: Note[],
-         *   decal: DecalData|null
-         * }} PlanetData
-         * @type {Map<string, PlanetData>}
-         */
-        let sceneData = new Map();
-
-        /** Load Map<string, PlanetData> from localStorage (if any). */
-        function loadDataFromStorage() {
-            const dataString = localStorage.getItem(STORAGE_KEY);
-            if (dataString) {
-                try {
-                    const dataArray = JSON.parse(dataString);
-                    sceneData = new Map(dataArray);
-                } catch(e) {
-                    console.error("Error parsing data from localStorage:", e);
-                    sceneData = new Map();
-                }
-            } else {
-                sceneData = new Map();
-            }
-        }
-
-        /** Persist Map<string, PlanetData> to localStorage. */
-        function saveDataToStorage() {
-            try {
-                const dataArray = Array.from(sceneData.entries());
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(dataArray));
-            } catch(e) {
-                console.error("Error saving data to localStorage:", e);
-            }
-        }
-
-        // =================================================================================
-        // SECTION: SHARED NAME ENTRY UTILITIES
-        // =================================================================================
-        /**
-         * Determine the next sequential default name for a given prefix.
-         * @param {string} prefix
-         * @param {string[]} existingNames
-         */
-        function getNextSequentialName(prefix, existingNames = []) {
-            let highest = 0;
-            const pattern = new RegExp(`^${prefix}\\s*(\\d+)$`, 'i');
-            for (const rawName of existingNames) {
-                if (typeof rawName !== 'string') continue;
-                const match = rawName.trim().match(pattern);
-                if (!match) continue;
-                const parsed = parseInt(match[1], 10);
-                if (!Number.isNaN(parsed) && parsed > highest) highest = parsed;
-            }
-            return `${prefix} ${highest + 1}`;
-        }
-
-        /**
-         * Display the shared naming modal, enforcing non-empty submissions.
-         * @param {{
-         *   title?: string,
-         *   defaultValue?: string,
-         *   confirmLabel?: string,
-         *   onConfirm?: (value: string) => void,
-         *   onCancel?: () => void
-         * }} options
-         */
-        function openNamePrompt(options = {}) {
-            const { title = 'Name Item', defaultValue = '', confirmLabel = 'Save', onConfirm, onCancel } = options;
-            activeNamePrompt = { onConfirm, onCancel };
-            namePromptTitle.textContent = title;
-            namePromptInput.value = typeof defaultValue === 'string' ? defaultValue : '';
-            namePromptInput.classList.remove('input-error');
-            namePromptConfirmBtn.textContent = confirmLabel;
-            namePromptModal.style.display = 'flex';
-            wasTypingBeforePrompt = isTyping;
-            isTyping = true;
-            requestAnimationFrame(() => {
-                namePromptInput.focus();
-                namePromptInput.select();
-            });
-        }
-
-        /** Hide and reset the shared naming modal. */
-        function closeNamePrompt() {
-            namePromptModal.style.display = 'none';
-            namePromptInput.value = '';
-            namePromptInput.classList.remove('input-error');
-            namePromptConfirmBtn.textContent = 'Save';
-            const restoreTyping = wasTypingBeforePrompt;
-            wasTypingBeforePrompt = false;
-            isTyping = restoreTyping;
-            activeNamePrompt = null;
-        }
-
-        function handleNamePromptConfirm() {
-            if (!activeNamePrompt) return;
-            const value = namePromptInput.value.trim();
-            if (!value) {
-                namePromptInput.classList.add('input-error');
-                namePromptInput.focus();
-                return;
-            }
-            const { onConfirm } = activeNamePrompt;
-            closeNamePrompt();
-            if (typeof onConfirm === 'function') onConfirm(value);
-        }
-
-        function handleNamePromptCancel() {
-            if (!activeNamePrompt) return;
-            const { onCancel } = activeNamePrompt;
-            closeNamePrompt();
-            if (typeof onCancel === 'function') onCancel();
-        }
-
-        namePromptInput.addEventListener('input', () => {
-            if (namePromptInput.classList.contains('input-error')) {
-                namePromptInput.classList.remove('input-error');
-            }
-        });
-        namePromptConfirmBtn.addEventListener('click', handleNamePromptConfirm);
-        namePromptCancelBtn.addEventListener('click', handleNamePromptCancel);
-        namePromptModal.addEventListener('click', (event) => {
-            if (event.target === namePromptModal) handleNamePromptCancel();
-        });
-        window.addEventListener('keydown', (event) => {
-            if (!activeNamePrompt) return;
-            if (event.key === 'Enter') {
-                event.preventDefault();
-                handleNamePromptConfirm();
-            } else if (event.key === 'Escape') {
-                event.preventDefault();
-                handleNamePromptCancel();
-            }
-        });
-
-        /**
-         * Rebuild the live 3D scene from persisted data. Safe to call after any mutation.
-         * Keeps selections if the planet still exists.
-         */
-        function rebuildSceneFromData() {
-            // Clear existing scene planets (but not lights, ground, etc.)
-            Array.from(planets.values()).forEach(planetMesh => {
-                if (planetMesh.label && planetMesh.label.element && planetMesh.label.element.parentNode) {
-                    planetMesh.label.element.parentNode.removeChild(planetMesh.label.element);
-                }
-                scene.remove(planetMesh);
-                removeDecal(planetMesh.userData.id);
-            });
-            planets.clear();
-
-            // Re-create planets from sceneData
-            for (const [id, data] of sceneData.entries()) {
-                createPlanetFromData(data, id);
-            }
-
-            // After rebuilding, re-select planet if it still exists
-            const selectedId = selectedPlanet ? selectedPlanet.userData.id : null;
-            if (selectedId && planets.has(selectedId)) {
-                selectedPlanet = planets.get(selectedId);
-                activePlanetUI = selectedPlanet.label;
-                activePlanetUI.element.style.display = 'block';
-            } else {
-                selectedPlanet = null;
-                activePlanetUI = null;
-            }
-
-            // Rebind open editors to refreshed meshes or close if planet disappeared
-            for (const editorState of Array.from(openEditors.values())) {
-                const refreshedPlanet = planets.get(editorState.planetId);
-                if (refreshedPlanet) {
-                    editorState.planet = refreshedPlanet;
-                    syncEditorContent(editorState);
-                } else {
-                    destroyEditor(editorState, { skipAnimation: true });
-                }
-            }
-
-            if (pendingNoteOpen) {
-                const { planetId, noteIndex, intersection } = pendingNoteOpen;
-                const targetPlanet = planets.get(planetId);
-                if (targetPlanet) {
-                    openNoteEditor(targetPlanet, noteIndex, { intersection });
-                }
-                pendingNoteOpen = null;
-            }
-        }
-
-
-        /** Return geometry for a given shape name. */
-        function getGeometry(shape) {
-            switch(shape) {
-                case "Sphere": return new THREE.SphereGeometry(1, 32, 32);
-                case "Cone": return new THREE.ConeGeometry(1, 2, 32);
-                case "Torus": return new THREE.TorusGeometry(1, 0.4, 16, 100);
-                case "Box": default: return new THREE.BoxGeometry(1.5, 1.5, 1.5);
-            }
-        }
-
-        /**
-         * Initialize Three.js scene, UI event handlers, post-processing, and restore state.
-         */
-        function init() {
-            // Load settings first
-            loadSettings();
-            moveSpeed = getSetting('movement.moveSpeed', 0.1);
-            DAMPING = getSetting('movement.damping', 0.93);
-
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x000005);
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.set(5, 5, 10);
-            clock = new THREE.Clock();
-            
-            // Sticky note decal texture (subtle card look, fits analog/CRT aesthetic)
-            const decalCanvas = document.createElement('canvas'); decalCanvas.width = 128; decalCanvas.height = 128; const ctx = decalCanvas.getContext('2d'); ctx.fillStyle = '#f9e79f'; ctx.fillRect(0, 0, 128, 128); ctx.fillStyle = '#f4d03f'; ctx.fillRect(0, 0, 128, 15); ctx.fillStyle = 'rgba(0,0,0,0.1)'; ctx.fillRect(120, 0, 8, 128); ctx.fillRect(0, 120, 128, 8); const decalTexture = new THREE.CanvasTexture(decalCanvas);
-            decalMaterial = new THREE.MeshStandardMaterial({ map: decalTexture, polygonOffset: true, polygonOffsetFactor: -4, transparent: true, opacity: 0.9 });
-
-            // Procedural star field for deep-space ambiance
-            const starsGeometry = new THREE.BufferGeometry(); const starsVertices = []; for (let i = 0; i < 20000; i++) { starsVertices.push(THREE.MathUtils.randFloatSpread(2000)); starsVertices.push(THREE.MathUtils.randFloatSpread(2000)); starsVertices.push(THREE.MathUtils.randFloatSpread(2000)); } starsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starsVertices, 3)); const starsMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.15, transparent: true, blending: THREE.AdditiveBlending }); scene.add(new THREE.Points(starsGeometry, starsMaterial));
-
-            // Core renderers
-            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); renderer.setSize(window.innerWidth, window.innerHeight); renderer.setPixelRatio(window.devicePixelRatio); renderer.shadowMap.enabled = true; sceneContainer.appendChild(renderer.domElement);
-            labelRenderer = new THREE.CSS2DRenderer(); labelRenderer.setSize(window.innerWidth, window.innerHeight); labelRenderer.domElement.style.position = 'absolute'; labelRenderer.domElement.style.top = '0px'; labelRenderer.domElement.style.pointerEvents = 'none'; sceneContainer.appendChild(labelRenderer.domElement);
-
-            // Lighting + subtle ground plane reference
-            scene.add(new THREE.AmbientLight(0xffffff, 0.6)); const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8); directionalLight.position.set(10, 20, 5); directionalLight.castShadow = true; scene.add(directionalLight);
-            const plane = new THREE.Mesh( new THREE.PlaneGeometry(100, 100), new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.8, metalness: 0.1, transparent: true, opacity: 0.25 }) ); plane.rotation.x = -Math.PI / 2; plane.receiveShadow = true; scene.add(plane);
-
-            // Orbit controls: rotation via mouse-drag; keyboard handled manually for custom momentum
-            controls = new THREE.OrbitControls(camera, renderer.domElement);
-            Object.assign(controls, {
-                enableDamping: getSetting('controls.enableDamping', true),
-                dampingFactor: getSetting('controls.dampingFactor', 0.05),
-                minDistance: getSetting('controls.minDistance', 3),
-                maxDistance: getSetting('controls.maxDistance', 50),
-                maxPolarAngle: getSetting('controls.maxPolarAngle', Math.PI / 2.1),
-                enableKeys: false
-            });
-            controls.addEventListener('start', () => { isDraggingCamera = true; });
-            controls.addEventListener('end', () => { setTimeout(() => { isDraggingCamera = false; }, 0); });
-            raycaster = new THREE.Raycaster(); mouse = new THREE.Vector2();
-
-            // Post-processing: subtle RGB offset + film scanlines (CRT flavor)
-            composer = new THREE.EffectComposer(renderer);
-            composer.addPass(new THREE.RenderPass(scene, camera));
-            const RetroShader = {
-                uniforms: { 'tDiffuse': { value: null }, 'rgbOffset': { value: getSetting('post.rgbOffset', 0.0015) }, 'vigStart': { value: getSetting('post.vignetteStart', 0.4) }, 'vigEnd': { value: getSetting('post.vignetteEnd', 0.9) } },
-                vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ); }`,
-                fragmentShader: `uniform sampler2D tDiffuse; uniform float rgbOffset; uniform float vigStart; uniform float vigEnd; varying vec2 vUv; void main() { vec2 offset = vec2(rgbOffset, rgbOffset); vec4 cr = texture2D(tDiffuse, vUv + offset); vec4 cg = texture2D(tDiffuse, vUv); vec4 cb = texture2D(tDiffuse, vUv - offset); gl_FragColor = vec4(cr.r, cg.g, cb.b, cg.a); float vignette = 1.0 - smoothstep(vigStart, vigEnd, distance(vUv, vec2(0.5))); gl_FragColor.rgb *= vignette; }`
+        const AstroMind = (() => {
+            const STORAGE_KEY = 'astroMind-scene-data';
+            const STORAGE_VERSION = 2;
+            const ENTITY_TYPES = { PLANET: 'planet', MOON: 'moon', SATELLITE: 'satellite' };
+            const TYPE_LABEL = {
+                [ENTITY_TYPES.PLANET]: 'Planet // Primary Topic',
+                [ENTITY_TYPES.MOON]: 'Moon // Sub Topic',
+                [ENTITY_TYPES.SATELLITE]: 'Satellite // Detail Node',
             };
-            const retroPass = new THREE.ShaderPass(RetroShader);
-            composer.addPass(retroPass);
-            filmPass = new THREE.FilmPass(
-                getSetting('post.filmNoise', 0.3),
-                getSetting('post.filmScanlineIntensity', 0.2),
-                getSetting('post.filmScanlineCount', 1024),
-                getSetting('post.filmGrayscale', false)
-            );
-            composer.addPass(filmPass);
-
-            // Events: keep concise; prevent Tab from moving focus when cycling planets
-            window.addEventListener('resize', onWindowResize);
-            window.addEventListener('keydown', (event) => {
-                if (activeNamePrompt) {
-                    if (event.key === 'Tab') event.preventDefault();
-                    return;
-                }
-                if (event.key === 'Tab') {
-                    event.preventDefault();
-                    if (!isTyping) cycleToPlanet();
-                } else {
-                    keyState[event.code] = true;
-                }
-            });
-            window.addEventListener('keyup', (event) => { keyState[event.code] = false; });
-            sceneContainer.addEventListener('mousedown', (e) => { sceneContainer.focus(); });
-            sceneContainer.addEventListener('click', onPlanetClick);
-
-            // Primary UI actions
-            addPlanetBtn.addEventListener('click', handleCreatePlanetClick);
-            modalConfirmBtn.addEventListener('click', () => { if (deleteAction) deleteAction(); });
-            modalCancelBtn.addEventListener('click', hideModal);
-            savePlanetBtn.addEventListener('click', savePlanetChanges);
-            closePlanetEditBtn.addEventListener('click', closePlanetEditPanel);
-            planetCloseBtn.addEventListener('click', closePlanetEditPanel);
-            deletePlanetBtn.addEventListener('click', handleDeletePlanetFromEditor);
-
-            loadDataFromStorage();
-            rebuildSceneFromData();
-            animate();
-        }
-
-        /** Make an element draggable using a handle element. */
-        function initDrag(element, handle) { let startX, startY, startLeft, startTop; function doDrag(e) { e.preventDefault(); element.style.right = "auto"; element.style.left = (startLeft + e.clientX - startX) + 'px'; element.style.top = (startTop + e.clientY - startY) + 'px'; } function stopDrag() { document.documentElement.removeEventListener('mousemove', doDrag, false); document.documentElement.removeEventListener('mouseup', stopDrag, false); } handle.addEventListener('mousedown', (e) => { e.preventDefault(); e.stopPropagation(); startX = e.clientX; startY = e.clientY; const rect = element.getBoundingClientRect(); startLeft = rect.left; startTop = rect.top; document.documentElement.addEventListener('mousemove', doDrag, false); document.documentElement.addEventListener('mouseup', stopDrag, false); }, false); }
-        /** Resize from bottom-left handle. Keeps right edge fixed by switching to left positioning. */
-        function initResizeBL(element, handle) { let startX, startY, startWidth, startHeight, startLeft; function doDrag(e) { e.preventDefault(); element.style.right = 'auto'; element.style.width = (startWidth - (e.clientX - startX)) + 'px'; element.style.height = (startHeight + (e.clientY - startY)) + 'px'; element.style.left = (startLeft + (e.clientX - startX)) + 'px'; } function stopDrag() { document.documentElement.removeEventListener('mousemove', doDrag, false); document.documentElement.removeEventListener('mouseup', stopDrag, false); } handle.addEventListener('mousedown', (e) => { e.preventDefault(); e.stopPropagation(); startX = e.clientX; startY = e.clientY; const rect = element.getBoundingClientRect(); startWidth = rect.width; startHeight = rect.height; startLeft = rect.left; document.documentElement.addEventListener('mousemove', doDrag, false); document.documentElement.addEventListener('mouseup', stopDrag, false); }, false); }
-        /** Resize from bottom-right handle. */
-        function initResizeBR(element, handle) { let startX, startY, startWidth, startHeight; function doDrag(e) { e.preventDefault(); element.style.width = (startWidth + (e.clientX - startX)) + 'px'; element.style.height = (startHeight + (e.clientY - startY)) + 'px'; } function stopDrag() { document.documentElement.removeEventListener('mousemove', doDrag, false); document.documentElement.removeEventListener('mouseup', stopDrag, false); } handle.addEventListener('mousedown', (e) => { e.preventDefault(); e.stopPropagation(); startX = e.clientX; startY = e.clientY; const rect = element.getBoundingClientRect(); startWidth = rect.width; startHeight = rect.height; element.style.left = rect.left + 'px'; element.style.right = 'auto'; document.documentElement.addEventListener('mousemove', doDrag, false); document.documentElement.addEventListener('mouseup', stopDrag, false); }, false); }
-        
-        /** Open planet editor for new planet creation. */
-        function handleCreatePlanetClick() { showPlanetEditPanel(); }
-        
-        function getEditorKey(planetId, noteIndex) {
-            return `${planetId}:${noteIndex}`;
-        }
-
-        function captureIntersectionSnapshot(intersection) {
-            if (!intersection) return null;
-            return {
-                point: intersection.point.clone(),
-                normal: intersection.face && intersection.face.normal ? intersection.face.normal.clone() : null,
+            const TYPE_CREATE_LABEL = {
+                [ENTITY_TYPES.PLANET]: '+ Moon',
+                [ENTITY_TYPES.MOON]: '+ Satellite',
             };
-        }
-
-        function focusEditor(editorState) {
-            if (!editorState || !editorState.element) return;
-            editorState.element.style.zIndex = `${++nextEditorZ}`;
-            if (editorState.connector) {
-                if (!editorState.connector.isConnected) {
-                    editorsRoot.appendChild(editorState.connector);
-                }
-                editorState.connector.style.zIndex = `${nextEditorZ - 1}`;
-            }
-        }
-
-        function getExistingEditorRects(excludeElement) {
-            return Array.from(openEditors.values())
-                .filter(state => state.element && state.element !== excludeElement)
-                .map(state => state.element.getBoundingClientRect());
-        }
-
-        function findEditorSpawnPosition(element) {
-            if (!element) {
-                return { top: 20, left: Math.max(20, window.innerWidth - 320) };
-            }
-
-            const margin = 20;
-            const rect = element.getBoundingClientRect();
-            const width = rect.width || element.offsetWidth || 300;
-            const height = rect.height || element.offsetHeight || 260;
-            const minLeft = margin;
-            const maxLeft = Math.max(minLeft, window.innerWidth - width - margin);
-            const maxTop = Math.max(margin, window.innerHeight - height - margin);
-            const preferredLeft = maxLeft;
-            const preferredTop = margin;
-            const verticalStep = Math.max(40, Math.round(height * 0.25));
-            const horizontalStep = Math.max(40, Math.round(width * 0.25));
-            const maxRows = Math.max(1, Math.floor((maxTop - margin) / verticalStep) + 1);
-            const maxCols = Math.max(1, Math.floor((maxLeft - minLeft) / horizontalStep) + 1);
-            const existingRects = getExistingEditorRects(element);
-
-            const collides = (top, left) => {
-                const right = left + width;
-                const bottom = top + height;
-                return existingRects.some(r => !(right <= r.left || left >= r.right || bottom <= r.top || top >= r.bottom));
+            const RELATION_COLORS = ['#77d6ff', '#ff7ae0', '#ffc877', '#7fffaa', '#b18bff'];
+            const DEG2RAD = Math.PI / 180;
+            const ORBIT_CONFIG = {
+                [ENTITY_TYPES.MOON]: { min: 4, max: 9, speedMin: 0.08, speedMax: 0.28 },
+                [ENTITY_TYPES.SATELLITE]: { min: 1.6, max: 3.4, speedMin: 0.3, speedMax: 0.6 },
             };
-
-            const candidates = [];
-            for (let diag = 0; diag < maxRows + maxCols; diag++) {
-                for (let row = 0; row <= diag; row++) {
-                    const col = diag - row;
-                    if (row >= maxRows || col >= maxCols) continue;
-                    const top = margin + row * verticalStep;
-                    const left = preferredLeft - col * horizontalStep;
-                    if (top > maxTop || left < minLeft) continue;
-                    candidates.push({ top, left });
-                }
-            }
-
-            candidates.push({
-                top: Math.min(preferredTop, maxTop),
-                left: Math.min(Math.max(minLeft, preferredLeft), maxLeft),
-            });
-
-            for (const candidate of candidates) {
-                if (!collides(candidate.top, candidate.left)) {
-                    return candidate;
-                }
-            }
-
-            return {
-                top: Math.min(preferredTop, maxTop),
-                left: Math.min(Math.max(minLeft, preferredLeft), maxLeft),
+            const SIZE_LOOKUP = {
+                [ENTITY_TYPES.PLANET]: [1.8, 2.4],
+                [ENTITY_TYPES.MOON]: [0.6, 1.05],
+                [ENTITY_TYPES.SATELLITE]: [0.28, 0.45],
             };
-        }
-
-        function positionEditor(editorState) {
-            if (!editorState || !editorState.element) return;
-            const { element } = editorState;
-            element.style.right = 'auto';
-            const { top, left } = findEditorSpawnPosition(element);
-            element.style.top = `${top}px`;
-            element.style.left = `${left}px`;
-        }
-
-        function attachEditorEvents(editorState) {
-            const { element, dragHandle, resizeBL, resizeBR, titleInput, contentInput, saveBtn, deleteBtn, closeBtn } = editorState;
-            if (dragHandle) initDrag(element, dragHandle);
-            if (resizeBL) initResizeBL(element, resizeBL);
-            if (resizeBR) initResizeBR(element, resizeBR);
-
-            element.addEventListener('mousedown', () => focusEditor(editorState));
-            element.addEventListener('focusin', () => focusEditor(editorState));
-
-            const markTyping = () => { isTyping = true; };
-            const clearTyping = () => { isTyping = false; };
-            titleInput.addEventListener('focus', markTyping);
-            titleInput.addEventListener('blur', clearTyping);
-            contentInput.addEventListener('focus', markTyping);
-            contentInput.addEventListener('blur', clearTyping);
-
-            saveBtn.addEventListener('click', () => saveNote(editorState));
-            deleteBtn.addEventListener('click', () => handleDeleteNoteClick(editorState));
-            closeBtn.addEventListener('click', () => closeNoteEditorWithAnimation(editorState));
-        }
-
-        function getNoteData(planetId, noteIndex) {
-            const planetData = sceneData.get(planetId);
-            if (!planetData || !Array.isArray(planetData.notes)) {
-                return { title: '', content: '' };
-            }
-            const note = planetData.notes[noteIndex];
-            return note ? { title: note.title || '', content: note.content || '' } : { title: '', content: '' };
-        }
-
-        function syncEditorContent(editorState) {
-            if (!editorState) return;
-            const { planetId, noteIndex, titleInput, contentInput } = editorState;
-            const note = getNoteData(planetId, noteIndex);
-            if (titleInput && document.activeElement !== titleInput) {
-                titleInput.value = note.title;
-            }
-            if (contentInput && document.activeElement !== contentInput) {
-                contentInput.value = note.content;
-            }
-        }
-
-        function instantiateEditor(planet, noteIndex, options = {}) {
-            const planetId = planet.userData.id;
-            const key = getEditorKey(planetId, noteIndex);
-            if (openEditors.has(key)) {
-                const existing = openEditors.get(key);
-            const templateRoot = noteEditorTemplate.content.firstElementChild;
-            if (!templateRoot) throw new Error('Note editor template with class "note-editor" is missing in #note-editor-template. Please ensure the template exists and has a root element with the correct structure.');
-                return existing;
-            }
-
-            const templateRoot = noteEditorTemplate.content.firstElementChild;
-            if (!templateRoot) throw new Error('Note editor template is missing root element.');
-            const editorElement = templateRoot.cloneNode(true);
-            editorElement.style.display = 'flex';
-            editorElement.dataset.editorKey = key;
-            editorElement.style.zIndex = `${++nextEditorZ}`;
-            editorElement.style.visibility = 'hidden';
-            editorElement.style.left = 'auto';
-
-            const titleInput = editorElement.querySelector('.note-title');
-            const contentInput = editorElement.querySelector('.note-content');
-            const saveBtn = editorElement.querySelector('.note-save-btn');
-            const deleteBtn = editorElement.querySelector('.note-delete-btn');
-            const closeBtn = editorElement.querySelector('.note-close-btn');
-            const dragHandle = editorElement.querySelector('.drag-handle');
-            const resizeBL = editorElement.querySelector('.resize-handle-bl');
-            const resizeBR = editorElement.querySelector('.resize-handle-br');
-            const connector = document.createElement('div');
-            connector.className = 'note-connector';
-            editorsRoot.appendChild(connector);
-
-            const editorState = {
-                key,
-                planetId,
-                planet,
-                noteIndex,
-                element: editorElement,
-                titleInput,
-                contentInput,
-                saveBtn,
-                deleteBtn,
-                closeBtn,
-                dragHandle,
-                resizeBL,
-                resizeBR,
-                connector,
-                intersection: options.intersection || null,
+            const CAMERA_DEFAULT = {
+                position: new THREE.Vector3(0, 6, 20),
+                pitch: -12 * DEG2RAD,
+                yaw: 0,
             };
+            const CAMERA_CONFIG = {
+                accel: 26,
+                damping: 0.87,
+                maxSpeed: 22,
+                boostMultiplier: 1.8,
+                focusDistance: 12,
+                focusDuration: 1.4,
+            };
+            const PANEL_HIDE_DISTANCE = 32;
+            const PANEL_FADE_DISTANCE = 22;
+            const TOAST_DURATION = 2200;
 
-            attachEditorEvents(editorState);
-            editorsRoot.appendChild(editorElement);
-            positionEditor(editorState);
-            editorElement.style.visibility = 'visible';
-            openEditors.set(key, editorState);
-            syncEditorContent(editorState);
-            focusEditor(editorState);
-            return editorState;
-        }
+            const randFloat = (min, max) => min + Math.random() * (max - min);
+            const randChoice = (arr) => arr[Math.floor(Math.random() * arr.length)];
+            const easeInOutCubic = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+            const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
+            const generateId = () => (crypto.randomUUID ? crypto.randomUUID() : `id-${Date.now()}-${Math.random()}`);
 
-        function destroyEditor(editorState, { skipAnimation = false } = {}) {
-            if (!editorState) return;
-            const { element, key, connector } = editorState;
-            if (!element) return;
-            if (!skipAnimation && element.classList.contains('closing')) return;
-
-            if (document.activeElement === editorState.titleInput || document.activeElement === editorState.contentInput) {
-                isTyping = false;
+            function createRandomColor() {
+                const hue = randFloat(180, 360);
+                return `hsl(${hue.toFixed(0)}, 75%, 60%)`;
             }
+            function lerp(a, b, t) { return a + (b - a) * t; }
 
-            if (openEditors.has(key)) openEditors.delete(key);
-            if (element.parentNode) element.parentNode.removeChild(element);
-            if (connector && connector.parentNode) connector.parentNode.removeChild(connector);
-        }
-
-        function closeNoteEditorWithAnimation(editorState) {
-            if (!editorState || !editorState.element) return;
-            const { element } = editorState;
-            if (element.classList.contains('closing')) return;
-            if (editorState.connector) editorState.connector.style.display = 'none';
-            element.classList.add('closing');
-            element.addEventListener('animationend', () => {
-                element.classList.remove('closing');
-                destroyEditor(editorState, { skipAnimation: true });
-            }, { once: true });
-        }
-
-        function saveNote(editorState) {
-            if (!editorState || !editorState.planet) return;
-            const { planet, planetId, noteIndex, titleInput, contentInput, intersection } = editorState;
-            const planetData = sceneData.get(planetId);
-            if (!planetData) return;
-
-            const notes = Array.isArray(planetData.notes) ? [...planetData.notes] : [];
-            notes[noteIndex] = { title: titleInput.value, content: contentInput.value };
-
-            const hasAnyNoteContent = notes.some(note => note && (note.title || note.content));
-
-            if (hasAnyNoteContent && !planetData.decal && intersection && planet) {
-                const orientation = new THREE.Euler();
-                const faceNormal = intersection.normal ? intersection.normal.clone() : planet.up.clone();
-                const matrix = new THREE.Matrix4().lookAt(
-                    intersection.point,
-                    intersection.point.clone().sub(faceNormal),
-                    planet.up
-                );
-                orientation.setFromRotationMatrix(matrix);
-                const inverseMatrix = new THREE.Matrix4().copy(planet.matrixWorld).invert();
-                planetData.decal = {
-                    position: intersection.point.clone().applyMatrix4(inverseMatrix),
-                    orientation: { x: orientation.x, y: orientation.y, z: orientation.z },
-                };
-            } else if (!hasAnyNoteContent) {
-                planetData.decal = null;
-            }
-
-            planetData.notes = notes;
-            sceneData.set(planetId, planetData);
-            saveDataToStorage();
-            rebuildSceneFromData();
-            closeNoteEditorWithAnimation(editorState);
-        }
-
-        function handleDeleteNoteClick(editorState) {
-            if (!editorState) return;
-            const { planetId, noteIndex } = editorState;
-            const planetData = sceneData.get(planetId);
-            if (!planetData) return;
-
-            confirmMessage.textContent = 'Delete this note?';
-            confirmModal.style.display = 'flex';
-            deleteAction = () => {
-                const notes = Array.isArray(planetData.notes) ? [...planetData.notes] : [];
-                notes.splice(noteIndex, 1);
-                planetData.notes = notes;
-                const hasAnyNoteContent = notes.some(n => (n && (n.title || n.content)));
-                if (!hasAnyNoteContent) planetData.decal = null;
-                sceneData.set(planetId, planetData);
-                saveDataToStorage();
-                rebuildSceneFromData();
-                for (const otherEditor of Array.from(openEditors.values())) {
-                    if (otherEditor.planetId === planetId && otherEditor.key !== editorState.key) {
-                        closeNoteEditorWithAnimation(otherEditor);
+            class DataStore {
+                constructor() {
+                    this.entities = new Map();
+                    this.relationships = new Map();
+                    this.listeners = new Map();
+                    this.version = STORAGE_VERSION;
+                }
+                on(event, handler) {
+                    if (!this.listeners.has(event)) this.listeners.set(event, new Set());
+                    this.listeners.get(event).add(handler);
+                }
+                emit(event, payload) {
+                    const handlers = this.listeners.get(event);
+                    if (!handlers) return;
+                    for (const handler of handlers) handler(payload);
+                }
+                load() {
+                    const raw = localStorage.getItem(STORAGE_KEY);
+                    if (!raw) {
+                        this.seedDefaults();
+                        return;
+                    }
+                    try {
+                        const data = JSON.parse(raw);
+                        if (!data.version || data.version < STORAGE_VERSION) {
+                            this.migrate(data);
+                            return;
+                        }
+                        this.version = data.version;
+                        this.entities = new Map(Object.entries(data.entities || {}));
+                        this.relationships = new Map(Object.entries(data.relationships || {}));
+                    } catch (err) {
+                        console.error('Failed to parse scene data, seeding defaults.', err);
+                        this.seedDefaults();
                     }
                 }
-                closeNoteEditorWithAnimation(editorState);
-                hideModal();
-            };
-        }
-
-        function openNoteEditor(planet, index, options = {}) {
-            const intersection = options.intersection || captureIntersectionSnapshot(lastIntersection);
-            instantiateEditor(planet, index, { intersection });
-        }
-        
-        /** Save planet property edits or create a new planet. */
-        function savePlanetChanges() {
-            const newName = planetNameInput.value.trim();
-            if (!newName) {
-                planetNameInput.classList.add('input-error');
-                planetNameInput.focus();
-                return;
+                seedDefaults() {
+                    this.entities.clear();
+                    this.relationships.clear();
+                    const planet = this.createEntity(ENTITY_TYPES.PLANET, null, {
+                        name: 'Origin Station',
+                        description: 'Your launch point. Add moons to branch ideas.',
+                        color: '#6bc7ff',
+                        position: { x: 0, y: 0, z: 0 },
+                    });
+                    const moon = this.createEntity(ENTITY_TYPES.MOON, planet.id, {
+                        name: 'Task Orbit',
+                        description: 'Track active tasks or sub-topics here.',
+                    });
+                    this.createEntity(ENTITY_TYPES.SATELLITE, moon.id, {
+                        name: 'First Detail',
+                        description: 'Try editing me or create more satellites.',
+                    });
+                    this.save();
+                }
+                migrate(legacy) {
+                    try {
+                        this.entities.clear();
+                        this.relationships.clear();
+                        const array = Array.isArray(legacy) ? legacy : legacy?.data || [];
+                        const planetMap = new Map(Array.isArray(array) ? array : []);
+                        for (const [id, planet] of planetMap.entries()) {
+                            const planetEntity = this.createEntity(ENTITY_TYPES.PLANET, null, {
+                                id,
+                                name: planet.name || `Planet ${this.entities.size + 1}`,
+                                description: planet.notes?.map((n) => n.title).join('\n') || '',
+                                color: planet.color || createRandomColor(),
+                                position: planet.position || { x: randFloat(-6, 6), y: randFloat(-4, 4), z: randFloat(-6, 6) },
+                            });
+                            if (planet.notes && planet.notes.length) {
+                                const moon = this.createEntity(ENTITY_TYPES.MOON, planetEntity.id, {
+                                    name: 'Legacy Notes',
+                                    description: 'Migrated from previous save.',
+                                });
+                                for (const note of planet.notes) {
+                                    this.createEntity(ENTITY_TYPES.SATELLITE, moon.id, {
+                                        name: note.title || 'Satellite',
+                                        description: note.content || '',
+                                    });
+                                }
+                            }
+                        }
+                        this.version = STORAGE_VERSION;
+                        this.save();
+                    } catch (err) {
+                        console.error('Migration failed, seeding defaults', err);
+                        this.seedDefaults();
+                    }
+                }
+                save() {
+                    const serialized = {
+                        version: STORAGE_VERSION,
+                        entities: Object.fromEntries(this.entities),
+                        relationships: Object.fromEntries(this.relationships),
+                    };
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(serialized));
+                }
+                defaultName(type) {
+                    const base = {
+                        [ENTITY_TYPES.PLANET]: 'Planet',
+                        [ENTITY_TYPES.MOON]: 'Moon',
+                        [ENTITY_TYPES.SATELLITE]: 'Satellite',
+                    }[type];
+                    const count = Array.from(this.entities.values()).filter((e) => e.type === type).length;
+                    return `${base} ${count + 1}`;
+                }
+                createEntity(type, parentId = null, overrides = {}) {
+                    const entity = {
+                        id: overrides.id || generateId(),
+                        type,
+                        name: overrides.name || this.defaultName(type),
+                        description: overrides.description || '',
+                        color: overrides.color || createRandomColor(),
+                        size: overrides.size || randFloat(...SIZE_LOOKUP[type]),
+                        parentId,
+                        orbitRadius: overrides.orbitRadius ?? randFloat(ORBIT_CONFIG[type]?.min || 0, ORBIT_CONFIG[type]?.max || 0),
+                        orbitSpeed: overrides.orbitSpeed ?? randFloat(ORBIT_CONFIG[type]?.speedMin || 0.05, ORBIT_CONFIG[type]?.speedMax || 0.3),
+                        orbitPhase: overrides.orbitPhase ?? randFloat(0, Math.PI * 2),
+                        position: overrides.position || { x: randFloat(-12, 12), y: randFloat(-5, 5), z: randFloat(-12, 12) },
+                        createdAt: overrides.createdAt || Date.now(),
+                    };
+                    if (type === ENTITY_TYPES.PLANET) {
+                        entity.orbitRadius = 0;
+                        entity.orbitSpeed = 0;
+                    }
+                    this.entities.set(entity.id, entity);
+                    this.emit('entity-created', entity);
+                    this.save();
+                    return entity;
+                }
+                updateEntity(id, partial) {
+                    const entity = this.entities.get(id);
+                    if (!entity) return;
+                    const updated = { ...entity, ...partial };
+                    this.entities.set(id, updated);
+                    this.emit('entity-updated', updated);
+                    this.save();
+                }
+                deleteEntity(id) {
+                    const entity = this.entities.get(id);
+                    if (!entity) return;
+                    for (const child of this.getChildren(id)) {
+                        this.deleteEntity(child.id);
+                    }
+                    for (const [relId, rel] of this.relationships.entries()) {
+                        if (rel.from === id || rel.to === id) {
+                            this.relationships.delete(relId);
+                            this.emit('relationship-removed', rel);
+                        }
+                    }
+                    this.entities.delete(id);
+                    this.emit('entity-removed', entity);
+                    this.save();
+                }
+                getChildren(parentId) {
+                    return Array.from(this.entities.values()).filter((e) => e.parentId === parentId);
+                }
+                createRelationship(from, to, overrides = {}) {
+                    const id = overrides.id || generateId();
+                    const relationship = {
+                        id,
+                        from,
+                        to,
+                        label: overrides.label || '',
+                        color: overrides.color || randChoice(RELATION_COLORS),
+                    };
+                    this.relationships.set(id, relationship);
+                    this.emit('relationship-created', relationship);
+                    this.save();
+                    return relationship;
+                }
+                deleteRelationship(id) {
+                    const rel = this.relationships.get(id);
+                    if (!rel) return;
+                    this.relationships.delete(id);
+                    this.emit('relationship-removed', rel);
+                    this.save();
+                }
             }
 
-            const newShape = shapeTypeSelect.value;
-            const newColor = planetColorInput.value;
-
-            if (editingPlanet) {
-                const planetId = editingPlanet.userData.id;
-                const planetData = sceneData.get(planetId);
-                if (planetData) {
-                    planetData.name = newName;
-                    planetData.shape = newShape;
-                    planetData.color = newColor;
-                    sceneData.set(planetId, planetData);
+            class AudioManager {
+                constructor() {
+                    this.ctx = null;
+                    this.master = null;
+                    this.hum = null;
                 }
-            } else {
-                const newId = crypto.randomUUID();
-                sceneData.set(newId, {
-                    name: newName,
-                    shape: newShape,
-                    color: newColor,
-                    position: {
-                        x: (Math.random() - 0.5) * 20,
-                        y: Math.random() * 2 + 1,
-                        z: (Math.random() - 0.5) * 20,
-                    },
-                    notes: [],
-                    decal: null,
+                ensure() {
+                    if (this.ctx) return;
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    if (!AudioCtx) return;
+                    this.ctx = new AudioCtx();
+                    this.master = this.ctx.createGain();
+                    this.master.gain.value = 0.35;
+                    this.master.connect(this.ctx.destination);
+                    this.startHum();
+                }
+                startHum() {
+                    if (!this.ctx || this.hum) return;
+                    this.hum = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    this.hum.type = 'sawtooth';
+                    this.hum.frequency.value = 80;
+                    gain.gain.value = 0.06;
+                    const filter = this.ctx.createBiquadFilter();
+                    filter.type = 'lowpass';
+                    filter.frequency.value = 700;
+                    this.hum.connect(filter).connect(gain).connect(this.master);
+                    this.hum.start();
+                }
+                playEvent({ frequency = 320, duration = 0.25, volume = 0.25 } = {}) {
+                    if (!this.ctx) return;
+                    const now = this.ctx.currentTime;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(frequency, now);
+                    gain.gain.setValueAtTime(0, now);
+                    gain.gain.linearRampToValueAtTime(volume, now + 0.03);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+                    osc.connect(gain).connect(this.master);
+                    osc.start(now);
+                    osc.stop(now + duration + 0.05);
+                }
+                playDelete() {
+                    if (!this.ctx) return;
+                    const now = this.ctx.currentTime;
+                    const osc = this.ctx.createOscillator();
+                    osc.type = 'sawtooth';
+                    const gain = this.ctx.createGain();
+                    gain.gain.setValueAtTime(0.25, now);
+                    gain.gain.linearRampToValueAtTime(0.0, now + 0.4);
+                    const filter = this.ctx.createBiquadFilter();
+                    filter.type = 'bandpass';
+                    filter.frequency.value = 400;
+                    osc.frequency.setValueAtTime(120, now);
+                    osc.connect(filter).connect(gain).connect(this.master);
+                    osc.start(now);
+                    osc.stop(now + 0.5);
+                }
+            }
+
+            class Toast {
+                constructor() {
+                    this.el = document.getElementById('toast');
+                    this.timeout = null;
+                }
+                show(message) {
+                    if (!this.el) return;
+                    this.el.textContent = message;
+                    this.el.classList.add('visible');
+                    clearTimeout(this.timeout);
+                    this.timeout = setTimeout(() => {
+                        this.el.classList.remove('visible');
+                    }, TOAST_DURATION);
+                }
+            }
+
+            class RelationshipModal {
+                constructor(store) {
+                    this.store = store;
+                    this.modal = document.getElementById('relationship-modal');
+                    this.targetSelect = document.getElementById('relationship-target');
+                    this.labelInput = document.getElementById('relationship-label');
+                    this.confirmBtn = document.getElementById('relationship-confirm');
+                    this.cancelBtn = document.getElementById('relationship-cancel');
+                    this.pendingResolve = null;
+                    this.confirmBtn.addEventListener('click', () => this.handleConfirm());
+                    this.cancelBtn.addEventListener('click', () => this.close());
+                }
+                open(sourceId) {
+                    const options = Array.from(this.store.entities.values())
+                        .filter((e) => e.id !== sourceId)
+                        .map((e) => `<option value="${e.id}">${TYPE_LABEL[e.type]} — ${e.name}</option>`)
+                        .join('');
+                    this.targetSelect.innerHTML = options || '<option disabled>No targets available</option>';
+                    this.targetSelect.disabled = options.length === 0;
+                    this.labelInput.value = '';
+                    this.modal.style.display = 'flex';
+                    return new Promise((resolve) => {
+                        this.pendingResolve = resolve;
+                    });
+                }
+                handleConfirm() {
+                    if (!this.pendingResolve || this.targetSelect.disabled) {
+                        this.close();
+                        return;
+                    }
+                    const resolve = this.pendingResolve;
+                    this.pendingResolve = null;
+                    this.modal.style.display = 'none';
+                    const target = this.targetSelect.value;
+                    const label = this.labelInput.value.trim();
+                    resolve({ target, label });
+                }
+                close() {
+                    const resolve = this.pendingResolve;
+                    this.pendingResolve = null;
+                    this.modal.style.display = 'none';
+                    if (resolve) resolve(null);
+                }
+            }
+            class PanelManager {
+                constructor(store, sceneManager, audio, relationshipModal, toast) {
+                    this.store = store;
+                    this.sceneManager = sceneManager;
+                    this.audio = audio;
+                    this.relationshipModal = relationshipModal;
+                    this.toast = toast;
+                    this.template = document.getElementById('entity-panel-template');
+                    this.currentId = null;
+                    this.panelObject = null;
+                    this.worldPos = new THREE.Vector3();
+                    this.store.on('entity-updated', (entity) => {
+                        if (entity.id === this.currentId) this.refreshPanel(entity);
+                    });
+                    this.store.on('relationship-created', () => this.refreshRelationships());
+                    this.store.on('relationship-removed', () => this.refreshRelationships());
+                }
+                setSelection(id, entityObjects) {
+                    if (this.panelObject) {
+                        this.panelObject.parent.remove(this.panelObject);
+                        this.panelObject = null;
+                    }
+                    this.currentId = id;
+                    if (!id) return;
+                    const entity = this.store.entities.get(id);
+                    const target = entityObjects.get(id);
+                    if (!entity || !target) return;
+                    const fragment = this.template.content.cloneNode(true);
+                    const panel = fragment.querySelector('.entity-panel');
+                    panel.style.pointerEvents = 'auto';
+                    ['mousedown', 'click', 'wheel'].forEach((evt) => {
+                        panel.addEventListener(evt, (event) => event.stopPropagation());
+                    });
+                    this.bindPanel(panel, entity);
+                    const cssObj = new THREE.CSS2DObject(panel);
+                    cssObj.position.set(0, entity.size + 1.4, 0);
+                    target.add(cssObj);
+                    this.panelObject = cssObj;
+                    requestAnimationFrame(() => panel.classList.add('visible'));
+                    this.refreshRelationships();
+                }
+                bindPanel(panel, entity) {
+                    panel.querySelector('.type-label').textContent = TYPE_LABEL[entity.type];
+                    panel.querySelector('.panel-title').textContent = entity.name;
+                    const nameInput = panel.querySelector('.entity-name-input');
+                    const descInput = panel.querySelector('.entity-description');
+                    const colorInput = panel.querySelector('.entity-color');
+                    nameInput.value = entity.name;
+                    descInput.value = entity.description || '';
+                    const colorHex = new THREE.Color(entity.color).getHexString ? `#${new THREE.Color(entity.color).getHexString()}` : entity.color;
+                    colorInput.value = colorHex;
+                    nameInput.addEventListener('change', (e) => {
+                        const value = e.target.value.trim() || entity.name;
+                        this.store.updateEntity(entity.id, { name: value });
+                        this.audio.ensure();
+                        this.audio.playEvent({ frequency: 620, volume: 0.12, duration: 0.18 });
+                    });
+                    nameInput.addEventListener('input', (e) => {
+                        panel.querySelector('.panel-title').textContent = e.target.value || entity.name;
+                    });
+                    descInput.addEventListener('change', (e) => {
+                        this.store.updateEntity(entity.id, { description: e.target.value });
+                    });
+                    colorInput.addEventListener('change', (e) => {
+                        this.store.updateEntity(entity.id, { color: e.target.value });
+                        this.audio.ensure();
+                        this.audio.playEvent({ frequency: 420, volume: 0.12, duration: 0.2 });
+                    });
+                    const actions = panel.querySelector('.actions');
+                    actions.innerHTML = '';
+                    if (entity.type !== ENTITY_TYPES.SATELLITE) {
+                        const childBtn = document.createElement('button');
+                        childBtn.textContent = TYPE_CREATE_LABEL[entity.type];
+                        childBtn.addEventListener('click', () => {
+                            const type = entity.type === ENTITY_TYPES.PLANET ? ENTITY_TYPES.MOON : ENTITY_TYPES.SATELLITE;
+                            const child = this.store.createEntity(type, entity.id);
+                            this.toast.show(`${TYPE_LABEL[type].split(' // ')[0]} launched`);
+                            this.sceneManager.focusEntity(child.id);
+                            this.sceneManager.selectEntity(child.id);
+                            this.audio.ensure();
+                            this.audio.playEvent({ frequency: 540, volume: 0.15, duration: 0.22 });
+                        });
+                        actions.appendChild(childBtn);
+                    }
+                    const relBtn = document.createElement('button');
+                    relBtn.textContent = 'Link Object';
+                    relBtn.addEventListener('click', async () => {
+                        const result = await this.relationshipModal.open(entity.id);
+                        if (!result) return;
+                        this.store.createRelationship(entity.id, result.target, { label: result.label });
+                        this.toast.show('Relationship added');
+                        this.audio.ensure();
+                        this.audio.playEvent({ frequency: 360, volume: 0.18, duration: 0.22 });
+                    });
+                    actions.appendChild(relBtn);
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.textContent = 'Delete';
+                    deleteBtn.classList.add('delete');
+                    deleteBtn.addEventListener('click', () => {
+                        this.audio.ensure();
+                        this.audio.playDelete();
+                        this.sceneManager.queueDeletion(entity.id);
+                        this.store.deleteEntity(entity.id);
+                        this.toast.show('Object fading out');
+                    });
+                    actions.appendChild(deleteBtn);
+                }
+                refreshPanel(entity) {
+                    if (!this.panelObject) return;
+                    const panel = this.panelObject.element;
+                    panel.querySelector('.panel-title').textContent = entity.name;
+                    panel.querySelector('.entity-name-input').value = entity.name;
+                    panel.querySelector('.entity-description').value = entity.description || '';
+                    const colorHex = new THREE.Color(entity.color).getHexString ? `#${new THREE.Color(entity.color).getHexString()}` : entity.color;
+                    panel.querySelector('.entity-color').value = colorHex;
+                    this.refreshRelationships();
+                }
+                refreshRelationships() {
+                    if (!this.panelObject || !this.currentId) return;
+                    const list = this.panelObject.element.querySelector('.relationship-list ul');
+                    list.innerHTML = '';
+                    const relevant = Array.from(this.store.relationships.values()).filter((rel) => rel.from === this.currentId || rel.to === this.currentId);
+                    if (!relevant.length) {
+                        const empty = document.createElement('li');
+                        empty.textContent = 'No links yet';
+                        empty.style.opacity = '0.6';
+                        list.appendChild(empty);
+                        return;
+                    }
+                    for (const rel of relevant) {
+                        const item = document.createElement('li');
+                        const otherId = rel.from === this.currentId ? rel.to : rel.from;
+                        const other = this.store.entities.get(otherId);
+                        item.textContent = `${rel.label || 'Linked'} → ${other ? other.name : 'Unknown'}`;
+                        const btn = document.createElement('button');
+                        btn.textContent = 'Remove';
+                        btn.addEventListener('click', () => {
+                            this.store.deleteRelationship(rel.id);
+                            this.toast.show('Relationship removed');
+                        });
+                        item.appendChild(btn);
+                        list.appendChild(item);
+                    }
+                }
+                update(camera) {
+                    if (!this.panelObject || !this.currentId) return;
+                    const target = this.sceneManager.entities.get(this.currentId);
+                    if (!target) return;
+                    target.getWorldPosition(this.worldPos);
+                    const distance = this.worldPos.distanceTo(camera.position);
+                    const panel = this.panelObject.element;
+                    if (distance > PANEL_HIDE_DISTANCE) {
+                        panel.classList.add('away');
+                        panel.style.opacity = '0';
+                    } else {
+                        panel.classList.remove('away');
+                        const t = clamp((distance - PANEL_FADE_DISTANCE) / (PANEL_HIDE_DISTANCE - PANEL_FADE_DISTANCE), 0, 1);
+                        panel.style.opacity = `${1 - t}`;
+                    }
+                }
+            }
+
+            class SceneManager {
+                constructor(store, audio) {
+                    this.store = store;
+                    this.audio = audio;
+                    this.scene = new THREE.Scene();
+                    this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
+                    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+                    this.renderer.setPixelRatio(window.devicePixelRatio);
+                    this.renderer.setSize(window.innerWidth, window.innerHeight);
+                    this.renderer.outputEncoding = THREE.sRGBEncoding;
+                    this.labelRenderer = new THREE.CSS2DRenderer();
+                    this.labelRenderer.setSize(window.innerWidth, window.innerHeight);
+                    this.labelRenderer.domElement.style.position = 'fixed';
+                    this.labelRenderer.domElement.style.top = '0';
+                    this.labelRenderer.domElement.style.left = '0';
+                    this.labelRenderer.domElement.style.pointerEvents = 'none';
+                    this.composer = new THREE.EffectComposer(this.renderer);
+                    this.clock = new THREE.Clock();
+                    this.pivotRoot = new THREE.Group();
+                    this.scene.add(this.pivotRoot);
+                    this.entities = new Map();
+                    this.relationshipLines = new Map();
+                    this.deletionQueue = new Map();
+                    this.pointer = new THREE.Vector2();
+                    this.raycaster = new THREE.Raycaster();
+                    this.selectionRing = document.getElementById('selection-ring');
+                    this.tempVecA = new THREE.Vector3();
+                    this.tempVecB = new THREE.Vector3();
+                    this.focusTarget = null;
+                    this.focusStartTime = 0;
+                    this.focusDuration = CAMERA_CONFIG.focusDuration;
+                    this.cameraVelocity = new THREE.Vector3();
+                    this.moveInput = new THREE.Vector3();
+                    this.moveInput.boost = false;
+                    this.yaw = CAMERA_DEFAULT.yaw;
+                    this.pitch = CAMERA_DEFAULT.pitch;
+                    this.pointerLocked = false;
+                    this.selectedId = null;
+                    this.toast = new Toast();
+                    this.relationshipModal = new RelationshipModal(this.store);
+                    this.panelManager = new PanelManager(this.store, this, audio, this.relationshipModal, this.toast);
+                    this.init();
+                }
+                init() {
+                    const container = document.getElementById('scene-container');
+                    container.innerHTML = '';
+                    container.appendChild(this.renderer.domElement);
+                    container.appendChild(this.labelRenderer.domElement);
+                    this.setupPostprocessing();
+                    this.setupLights();
+                    this.setupSky();
+                    this.setupStars();
+                    this.setupEvents(container);
+                    this.resetCamera();
+                    for (const entity of this.store.entities.values()) this.addEntityVisual(entity);
+                    for (const rel of this.store.relationships.values()) this.addRelationshipVisual(rel);
+                    this.store.on('entity-created', (entity) => {
+                        this.addEntityVisual(entity);
+                        if (entity.type === ENTITY_TYPES.PLANET) {
+                            this.focusEntity(entity.id);
+                        }
+                    });
+                    this.store.on('entity-updated', (entity) => this.updateEntityVisual(entity));
+                    this.store.on('entity-removed', (entity) => this.removeEntity(entity.id));
+                    this.store.on('relationship-created', (rel) => this.addRelationshipVisual(rel));
+                    this.store.on('relationship-removed', (rel) => this.removeRelationshipVisual(rel.id));
+                    this.animate();
+                }
+                setupPostprocessing() {
+                    const renderPass = new THREE.RenderPass(this.scene, this.camera);
+                    this.composer.addPass(renderPass);
+                    const filmPass = new THREE.FilmPass(0.2, 0.4, 2048, false);
+                    filmPass.renderToScreen = false;
+                    this.composer.addPass(filmPass);
+                    const rgbShift = new THREE.ShaderPass(THREE.RGBShiftShader);
+                    rgbShift.uniforms.amount.value = 0.0009;
+                    this.composer.addPass(rgbShift);
+                    const copyPass = new THREE.ShaderPass(THREE.CopyShader);
+                    copyPass.renderToScreen = true;
+                    this.composer.addPass(copyPass);
+                }
+                setupLights() {
+                    const ambient = new THREE.AmbientLight(0x89a7ff, 0.65);
+                    this.scene.add(ambient);
+                    const main = new THREE.PointLight(0x8ffcff, 1.6, 0, 2);
+                    main.position.set(12, 18, 14);
+                    this.scene.add(main);
+                }
+                setupSky() {
+                    const geometry = new THREE.SphereGeometry(500, 32, 32);
+                    const material = new THREE.ShaderMaterial({
+                        side: THREE.BackSide,
+                        uniforms: { baseColor: { value: new THREE.Color('#050111') } },
+                        vertexShader: `varying vec3 vPos; void main(){ vPos = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
+                        fragmentShader: `varying vec3 vPos; uniform vec3 baseColor; void main(){ float intensity = pow(1.0 - normalize(vPos).y * 0.5 - 0.25, 3.0); vec3 color = mix(baseColor, vec3(0.12, 0.18, 0.32), intensity); gl_FragColor = vec4(color,1.0); }`,
+                    });
+                    const sky = new THREE.Mesh(geometry, material);
+                    this.scene.add(sky);
+                }
+                setupStars() {
+                    const starGeometry = new THREE.BufferGeometry();
+                    const starCount = 1800;
+                    const positions = new Float32Array(starCount * 3);
+                    const colors = new Float32Array(starCount * 3);
+                    const color = new THREE.Color();
+                    for (let i = 0; i < starCount; i++) {
+                        const r = 200 + Math.random() * 260;
+                        const theta = Math.random() * Math.PI * 2;
+                        const phi = Math.acos(THREE.MathUtils.randFloatSpread(2));
+                        positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+                        positions[i * 3 + 1] = r * Math.cos(phi);
+                        positions[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+                        const brightness = randFloat(0.6, 1.0);
+                        color.setHSL(randFloat(0.55, 0.65), randFloat(0.2, 0.4), brightness);
+                        colors[i * 3] = color.r;
+                        colors[i * 3 + 1] = color.g;
+                        colors[i * 3 + 2] = color.b;
+                    }
+                    starGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                    starGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+                    const starMaterial = new THREE.PointsMaterial({ size: 0.8, vertexColors: true, transparent: true, opacity: 0.9 });
+                    const stars = new THREE.Points(starGeometry, starMaterial);
+                    this.scene.add(stars);
+                }
+                setupEvents(container) {
+                    window.addEventListener('resize', () => this.handleResize());
+                    container.addEventListener('click', (e) => this.handleClick(e));
+                    container.addEventListener('mousedown', (e) => this.handlePointerDown(e));
+                    document.addEventListener('mouseup', () => this.handlePointerUp());
+                    document.addEventListener('pointerlockchange', () => this.handlePointerLockChange());
+                    container.addEventListener('mousemove', (e) => this.handlePointerMove(e));
+                    window.addEventListener('keydown', (e) => this.handleKeyDown(e));
+                    window.addEventListener('keyup', (e) => this.handleKeyUp(e));
+                    window.addEventListener('blur', () => this.resetMovement());
+                }
+                resetCamera() {
+                    this.camera.position.copy(CAMERA_DEFAULT.position);
+                    this.pitch = CAMERA_DEFAULT.pitch;
+                    this.yaw = CAMERA_DEFAULT.yaw;
+                    this.updateCameraOrientation();
+                }
+                updateCameraOrientation() {
+                    const quaternion = new THREE.Quaternion();
+                    quaternion.setFromEuler(new THREE.Euler(this.pitch, this.yaw, 0, 'YXZ'));
+                    this.camera.quaternion.copy(quaternion);
+                }
+                animate() {
+                    requestAnimationFrame(() => this.animate());
+                    const delta = Math.min(this.clock.getDelta(), 0.1);
+                    this.updateCamera(delta);
+                    this.updateEntities(delta);
+                    this.updateRelationships();
+                    this.panelManager.update(this.camera);
+                    this.renderer.autoClear = false;
+                    this.renderer.clear();
+                    this.composer.render(delta);
+                    this.labelRenderer.render(this.scene, this.camera);
+                }
+                updateCamera(delta) {
+                    if (this.focusTarget) {
+                        const elapsed = (performance.now() - this.focusStartTime) / (this.focusDuration * 1000);
+                        const t = clamp(elapsed, 0, 1);
+                        const eased = easeInOutCubic(t);
+                        const { start, end } = this.focusTarget;
+                        this.camera.position.lerpVectors(start.position, end.position, eased);
+                        this.yaw = lerp(start.yaw, end.yaw, eased);
+                        this.pitch = lerp(start.pitch, end.pitch, eased);
+                        this.updateCameraOrientation();
+                        if (t >= 1) this.focusTarget = null;
+                        return;
+                    }
+                    const forward = new THREE.Vector3();
+                    this.camera.getWorldDirection(forward);
+                    forward.normalize();
+                    const right = new THREE.Vector3().crossVectors(forward, this.camera.up).normalize();
+                    const up = new THREE.Vector3().crossVectors(right, forward).normalize();
+                    const accel = new THREE.Vector3();
+                    accel.addScaledVector(forward, this.moveInput.z);
+                    accel.addScaledVector(right, this.moveInput.x);
+                    accel.addScaledVector(up, this.moveInput.y);
+                    if (accel.lengthSq() > 1) accel.normalize();
+                    const boost = this.moveInput.boost ? CAMERA_CONFIG.boostMultiplier : 1;
+                    this.cameraVelocity.addScaledVector(accel, CAMERA_CONFIG.accel * delta * boost);
+                    const speed = this.cameraVelocity.length();
+                    if (speed > CAMERA_CONFIG.maxSpeed) this.cameraVelocity.setLength(CAMERA_CONFIG.maxSpeed);
+                    this.camera.position.addScaledVector(this.cameraVelocity, delta);
+                    this.cameraVelocity.multiplyScalar(Math.pow(CAMERA_CONFIG.damping, delta * 60));
+                    if (this.cameraVelocity.length() < 0.001) this.cameraVelocity.set(0, 0, 0);
+                }
+                updateEntities(delta) {
+                    const now = performance.now() * 0.001;
+                    for (const [id, obj] of this.entities) {
+                        const entity = this.store.entities.get(id);
+                        if (!entity) continue;
+                        if (entity.type !== ENTITY_TYPES.PLANET) {
+                            const pivot = obj.userData.pivot;
+                            if (pivot) pivot.rotation.y = entity.orbitPhase + now * entity.orbitSpeed;
+                        }
+                        if (this.deletionQueue.has(id)) {
+                            const entry = this.deletionQueue.get(id);
+                            entry.elapsed += delta;
+                            const t = clamp(entry.elapsed / entry.duration, 0, 1);
+                            const scale = 1 - t;
+                            obj.scale.setScalar(Math.max(scale, 0.0001));
+                            if (t >= 1) {
+                                this.removeEntityImmediate(id);
+                                this.deletionQueue.delete(id);
+                            }
+                        }
+                    }
+                }
+                updateRelationships() {
+                    const camera = this.camera;
+                    const ring = this.selectionRing;
+                    if (this.selectedId && ring) {
+                        const obj = this.entities.get(this.selectedId);
+                        if (obj) {
+                            obj.getWorldPosition(this.tempVecA);
+                            const screen = this.tempVecB.copy(this.tempVecA).project(camera);
+                            const x = (screen.x * 0.5 + 0.5) * window.innerWidth;
+                            const y = (-screen.y * 0.5 + 0.5) * window.innerHeight;
+                            ring.style.left = `${x}px`;
+                            ring.style.top = `${y}px`;
+                            ring.classList.add('visible');
+                        }
+                    } else if (ring) {
+                        ring.classList.remove('visible');
+                    }
+                    for (const [id, line] of this.relationshipLines) {
+                        const rel = this.store.relationships.get(id);
+                        if (!rel) continue;
+                        const a = this.entities.get(rel.from);
+                        const b = this.entities.get(rel.to);
+                        if (!a || !b) continue;
+                        a.getWorldPosition(this.tempVecA);
+                        b.getWorldPosition(this.tempVecB);
+                        const positions = line.geometry.attributes.position.array;
+                        positions[0] = this.tempVecA.x;
+                        positions[1] = this.tempVecA.y;
+                        positions[2] = this.tempVecA.z;
+                        positions[3] = this.tempVecB.x;
+                        positions[4] = this.tempVecB.y;
+                        positions[5] = this.tempVecB.z;
+                        line.geometry.attributes.position.needsUpdate = true;
+                    }
+                }
+                handleResize() {
+                    const width = window.innerWidth;
+                    const height = window.innerHeight;
+                    this.camera.aspect = width / height;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(width, height);
+                    this.labelRenderer.setSize(width, height);
+                    this.composer.setSize(width, height);
+                }
+                handleClick(event) {
+                    if (this.pointerLocked) return;
+                    const entity = this.pickEntity(event.clientX, event.clientY);
+                    if (entity) {
+                        this.selectEntity(entity.id);
+                        this.audio.ensure();
+                        this.audio.playEvent({ frequency: 540, volume: 0.18 });
+                    } else {
+                        this.selectEntity(null);
+                    }
+                }
+                pickEntity(x, y) {
+                    const rect = this.renderer.domElement.getBoundingClientRect();
+                    this.pointer.x = ((x - rect.left) / rect.width) * 2 - 1;
+                    this.pointer.y = -((y - rect.top) / rect.height) * 2 + 1;
+                    this.raycaster.setFromCamera(this.pointer, this.camera);
+                    const meshes = [];
+                    for (const obj of this.entities.values()) {
+                        if (obj.userData && obj.userData.pickTarget) meshes.push(obj.userData.pickTarget);
+                    }
+                    const intersections = this.raycaster.intersectObjects(meshes, false);
+                    if (intersections.length) {
+                        return intersections[0].object.userData.entity;
+                    }
+                    return null;
+                }
+                handlePointerDown(event) {
+                    if (event.button !== 0) return;
+                    const container = this.renderer.domElement.parentElement;
+                    if (container.requestPointerLock) {
+                        container.requestPointerLock();
+                    }
+                    this.pointerLocked = true;
+                    this.audio.ensure();
+                }
+                handlePointerUp() {
+                    const doc = document;
+                    if (doc.exitPointerLock) {
+                        doc.exitPointerLock();
+                    }
+                }
+                handlePointerLockChange() {
+                    const locked = document.pointerLockElement === this.renderer.domElement.parentElement;
+                    this.pointerLocked = locked;
+                }
+                handlePointerMove(event) {
+                    if (!this.pointerLocked) return;
+                    const sensitivity = 0.0025;
+                    this.yaw -= event.movementX * sensitivity;
+                    this.pitch -= event.movementY * sensitivity;
+                    this.pitch = clamp(this.pitch, -Math.PI / 2 + 0.01, Math.PI / 2 - 0.01);
+                    this.updateCameraOrientation();
+                }
+                handleKeyDown(event) {
+                    if (event.code === 'Tab') {
+                        event.preventDefault();
+                        this.focusNextPlanet();
+                        return;
+                    }
+                    switch (event.code) {
+                        case 'KeyW': this.moveInput.z = -1; break;
+                        case 'KeyS': this.moveInput.z = 1; break;
+                        case 'KeyA': this.moveInput.x = -1; break;
+                        case 'KeyD': this.moveInput.x = 1; break;
+                        case 'KeyQ': this.moveInput.y = -1; break;
+                        case 'KeyE': this.moveInput.y = 1; break;
+                        case 'ShiftLeft':
+                        case 'ShiftRight': this.moveInput.boost = true; break;
+                    }
+                }
+                handleKeyUp(event) {
+                    switch (event.code) {
+                        case 'KeyW':
+                        case 'KeyS': this.moveInput.z = 0; break;
+                        case 'KeyA':
+                        case 'KeyD': this.moveInput.x = 0; break;
+                        case 'KeyQ':
+                        case 'KeyE': this.moveInput.y = 0; break;
+                        case 'ShiftLeft':
+                        case 'ShiftRight': this.moveInput.boost = false; break;
+                    }
+                }
+                resetMovement() {
+                    this.moveInput.set(0, 0, 0);
+                    this.moveInput.boost = false;
+                    this.cameraVelocity.set(0, 0, 0);
+                }
+                focusNextPlanet() {
+                    const planets = Array.from(this.store.entities.values())
+                        .filter((e) => e.type === ENTITY_TYPES.PLANET)
+                        .sort((a, b) => a.createdAt - b.createdAt);
+                    if (!planets.length) return;
+                    const currentIndex = planets.findIndex((p) => p.id === this.selectedId);
+                    const nextIndex = (currentIndex + 1) % planets.length;
+                    const target = planets[nextIndex];
+                    this.focusEntity(target.id);
+                    this.selectEntity(target.id);
+                    this.audio.ensure();
+                    this.audio.playEvent({ frequency: 280, duration: 0.6, volume: 0.18 });
+                }
+                focusEntity(id) {
+                    const entity = this.store.entities.get(id);
+                    const obj = this.entities.get(id);
+                    if (!entity || !obj) return;
+                    const worldPosition = new THREE.Vector3();
+                    obj.getWorldPosition(worldPosition);
+                    const direction = new THREE.Vector3(0, 0, 1).applyQuaternion(this.camera.quaternion);
+                    const desiredPosition = new THREE.Vector3().copy(worldPosition).addScaledVector(direction, -CAMERA_CONFIG.focusDistance);
+                    const toTarget = new THREE.Vector3().subVectors(worldPosition, desiredPosition).normalize();
+                    const endYaw = Math.atan2(toTarget.x, toTarget.z);
+                    const endPitch = Math.asin(toTarget.y);
+                    this.focusTarget = {
+                        start: {
+                            position: this.camera.position.clone(),
+                            yaw: this.yaw,
+                            pitch: this.pitch,
+                        },
+                        end: {
+                            position: desiredPosition,
+                            yaw: endYaw,
+                            pitch: endPitch,
+                        },
+                    };
+                    this.focusStartTime = performance.now();
+                }
+                selectEntity(id) {
+                    if (this.selectedId === id) return;
+                    this.selectedId = id;
+                    this.panelManager.setSelection(id, this.entities);
+                }
+                addEntityVisual(entity) {
+                    const group = new THREE.Group();
+                    const pivot = new THREE.Group();
+                    const geometry = this.geometryFor(entity.type, entity.size);
+                    const material = new THREE.MeshStandardMaterial({
+                        color: entity.color,
+                        roughness: 0.4,
+                        metalness: 0.35,
+                        emissive: new THREE.Color(entity.color).multiplyScalar(0.18),
+                        transparent: true,
+                    });
+                    const mesh = new THREE.Mesh(geometry, material);
+                    mesh.userData.entity = entity;
+                    const pickTarget = mesh.clone();
+                    pickTarget.material = new THREE.MeshBasicMaterial({ visible: false });
+                    pickTarget.userData.entity = entity;
+                    group.add(pivot);
+                    pivot.add(mesh);
+                    pivot.add(pickTarget);
+                    if (entity.type === ENTITY_TYPES.PLANET) {
+                        group.position.set(entity.position.x, entity.position.y, entity.position.z);
+                        this.pivotRoot.add(group);
+                    } else {
+                        const parentObj = this.entities.get(entity.parentId);
+                        if (parentObj) {
+                            const radius = entity.orbitRadius || 4;
+                            mesh.position.set(radius, 0, 0);
+                            pickTarget.position.copy(mesh.position);
+                            parentObj.userData.pivot.add(group);
+                        }
+                    }
+                    group.userData = { mesh, pivot, pickTarget };
+                    this.entities.set(entity.id, group);
+                    this.addLabel(entity, group);
+                }
+                addLabel(entity, group) {
+                    const div = document.createElement('div');
+                    div.className = 'entity-label';
+                    div.style.pointerEvents = 'none';
+                    div.style.fontSize = '0.7rem';
+                    div.style.letterSpacing = '0.16em';
+                    div.style.padding = '4px 6px';
+                    div.style.background = 'rgba(0,0,0,0.45)';
+                    div.style.border = '1px solid rgba(145, 240, 255, 0.25)';
+                    div.style.textTransform = 'uppercase';
+                    div.style.color = '#b5e4ff';
+                    div.textContent = entity.name;
+                    const label = new THREE.CSS2DObject(div);
+                    label.position.set(0, entity.size + 0.8, 0);
+                    group.add(label);
+                    group.userData.label = label;
+                }
+                geometryFor(type, size) {
+                    switch (type) {
+                        case ENTITY_TYPES.MOON:
+                            return new THREE.IcosahedronGeometry(size, 1);
+                        case ENTITY_TYPES.SATELLITE:
+                            return new THREE.OctahedronGeometry(size, 0);
+                        default:
+                            return new THREE.SphereGeometry(size, 48, 32);
+                    }
+                }
+                updateEntityVisual(entity) {
+                    const group = this.entities.get(entity.id);
+                    if (!group) return;
+                    group.userData.mesh.material.color.set(entity.color);
+                    group.userData.mesh.material.emissive.set(new THREE.Color(entity.color).multiplyScalar(0.18));
+                    if (group.userData.label) {
+                        group.userData.label.element.textContent = entity.name;
+                    }
+                }
+                removeEntity(id) {
+                    if (!this.entities.has(id)) return;
+                    if (this.selectedId === id) {
+                        this.selectEntity(null);
+                    }
+                    this.queueDeletion(id);
+                }
+                queueDeletion(id) {
+                    const obj = this.entities.get(id);
+                    if (!obj) return;
+                    this.deletionQueue.set(id, { elapsed: 0, duration: 0.6 });
+                }
+                removeEntityImmediate(id) {
+                    const obj = this.entities.get(id);
+                    if (!obj) return;
+                    if (obj.parent) obj.parent.remove(obj);
+                    this.entities.delete(id);
+                }
+                addRelationshipVisual(rel) {
+                    const geometry = new THREE.BufferGeometry();
+                    geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
+                    const material = new THREE.LineBasicMaterial({ color: rel.color, transparent: true, opacity: 0.65 });
+                    const line = new THREE.Line(geometry, material);
+                    this.scene.add(line);
+                    this.relationshipLines.set(rel.id, line);
+                }
+                removeRelationshipVisual(id) {
+                    const line = this.relationshipLines.get(id);
+                    if (!line) return;
+                    this.scene.remove(line);
+                    this.relationshipLines.delete(id);
+                }
+            }
+
+            function init() {
+                const store = new DataStore();
+                store.load();
+                const audio = new AudioManager();
+                const scene = new SceneManager(store, audio);
+                document.getElementById('create-planet-btn').addEventListener('click', () => {
+                    const planet = store.createEntity(ENTITY_TYPES.PLANET, null);
+                    scene.focusEntity(planet.id);
+                    scene.selectEntity(planet.id);
+                    audio.ensure();
+                    audio.playEvent({ frequency: 480, duration: 0.4, volume: 0.2 });
                 });
+                return { store, scene };
             }
 
-            saveDataToStorage();
-            rebuildSceneFromData();
-            closePlanetEditPanel();
-        }
+            return { init };
+        })();
 
-        /** Confirm delete planet flow from the planet editor. */
-        function handleDeletePlanetFromEditor() {
-            if (!editingPlanet) return;
-            confirmMessage.textContent = 'Delete this planet and all of its notes?';
-            confirmModal.style.display = 'flex';
-            deleteAction = () => {
-                fadeAndDeletePlanet(editingPlanet);
-                hideModal();
-                closePlanetEditPanel();
-                if (activePlanetUI) activePlanetUI.element.style.display = 'none';
-                activePlanetUI = null;
-            };
-        }
-
-        /** Smoothly fade a planet and its decal, then remove from scene and storage. */
-        function fadeAndDeletePlanet(planetToDelete) {
-            const planetId = planetToDelete.userData.id;
-            const duration = 500;
-            const startTime = performance.now();
-
-            // Close any open note tied to this planet (before it disappears)
-            for (const editorState of Array.from(openEditors.values())) {
-                if (editorState.planetId === planetId) {
-                    closeNoteEditorWithAnimation(editorState);
-                }
-            }
-            lastIntersection = null;
-            if (pendingNoteOpen && pendingNoteOpen.planetId === planetId) {
-                pendingNoteOpen = null;
-            }
-
-            planetToDelete.traverse((child) => {
-                if (child.isMesh) {
-                    child.material = child.material.clone();
-                    child.material.transparent = true;
-                }
-            });
-            const decal = decals.get(planetId);
-            if (decal) decal.material.transparent = true;
-
-            function fade() {
-                const progress = Math.min((performance.now() - startTime) / duration, 1);
-                const opacity = 1 - progress;
-                planetToDelete.traverse((child) => { if (child.isMesh) child.material.opacity = opacity; });
-                if (decal) decal.material.opacity = opacity;
-                if (progress < 1) requestAnimationFrame(fade);
-                else {
-                    sceneData.delete(planetId);
-                    saveDataToStorage();
-                    rebuildSceneFromData();
-                }
-            }
-
-            requestAnimationFrame(fade);
-        }
-        function hideModal() { confirmModal.style.display = 'none'; deleteAction = null; }
-        
-        /** Remove previously placed decal for a planet (if any). */
-        function removeDecal(planetId) {
-            if (decals.has(planetId)) {
-                const decal = decals.get(planetId);
-                scene.remove(decal);
-                decal.geometry.dispose();
-                decals.delete(planetId);
-            }
-        }
-        /** Place or update a sticky-note style DecalGeometry on the planet using saved local transform. */
-        function placeOrUpdateDecal(planetId, data) {
-            removeDecal(planetId);
-            const parentPlanet = planets.get(planetId);
-            if (!parentPlanet || !data.decal) return;
-            const position = new THREE.Vector3().copy(data.decal.position).applyMatrix4(parentPlanet.matrixWorld);
-            const orientation = new THREE.Euler().copy(data.decal.orientation);
-            const s = getSetting('notes.decalSize', 0.75);
-            const decalGeom = new THREE.DecalGeometry(parentPlanet, position, orientation, new THREE.Vector3(s, s, s));
-            const decal = new THREE.Mesh(decalGeom, decalMaterial);
-            decal.material = decal.material.clone();
-            decal.material.opacity = getSetting('notes.decalOpacity', 0.9);
-            decal.material.transparent = true;
-            decals.set(planetId, decal);
-            scene.add(decal);
-        }
-        
-        /** Construct a THREE.Mesh from PlanetData and attach an on-planet UI label. */
-        function createPlanetFromData(data, id) {
-            const geometry = getGeometry(data.shape);
-            const material = new THREE.MeshStandardMaterial({
-                color: data.color || "#ffffff",
-                roughness: 0.5,
-                metalness: 0.1
-            });
-            const mesh = new THREE.Mesh(geometry, material);
-            mesh.position.set(data.position.x, data.position.y, data.position.z);
-            mesh.castShadow = true;
-            mesh.receiveShadow = true;
-            mesh.userData = { id, data };
-
-            const planetDiv = document.createElement('div');
-            planetDiv.className = 'planet-ui';
-
-            const header = document.createElement('div');
-            header.className = 'planet-ui-header';
-
-            const title = document.createElement('h3');
-            title.textContent = data.name;
-
-            const editBtn = document.createElement('button');
-            editBtn.className = 'edit-planet-btn';
-            editBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M12.854.146a.5.5 0 0 0-.707 0L10.5 1.793 14.207 5.5l1.647-1.646a.5.5 0 0 0 0-.708l-3-3zm.646 6.061L9.793 2.5 3.293 9H3.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.207l6.5-6.5zm-7.468 7.468A.5.5 0 0 1 6 13.5V13h-.5a.5.5 0 0 1-.5-.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.5-.5V10h-.5a.499.499 0 0 1-.175-.032l-.179.178a.5.5 0 0 0-.11.168l-2 5a.5.5 0 0 0 .65.65l5-2a.5.5 0 0 0 .168-.11l.178-.178z"/></svg>`;
-            editBtn.onclick = (e) => {
-                e.stopPropagation();
-                showPlanetEditPanel(mesh);
-            };
-
-            header.appendChild(title);
-            header.appendChild(editBtn);
-
-            const notesList = document.createElement('ul');
-            notesList.className = 'notes-list';
-            (data.notes || []).forEach((note, index) => {
-                const li = document.createElement('li');
-                li.textContent = note.title || `Note ${index + 1}`;
-                li.onclick = (e) => {
-                    e.stopPropagation();
-                    openNoteEditor(mesh, index);
-                };
-                notesList.appendChild(li);
-            });
-
-            const addNoteBtn = document.createElement('button');
-            addNoteBtn.className = 'add-note-btn';
-            addNoteBtn.textContent = '+ New Note';
-            addNoteBtn.onclick = (e) => {
-                e.stopPropagation();
-                addNewNote(mesh);
-            };
-
-            planetDiv.appendChild(header);
-            planetDiv.appendChild(notesList);
-            planetDiv.appendChild(addNoteBtn);
-
-            const planetLabel = new THREE.CSS2DObject(planetDiv);
-            planetLabel.position.set(0, 1.5, 0);
-            mesh.add(planetLabel);
-            mesh.label = planetLabel;
-            planetLabel.element.style.display = 'none';
-
-            scene.add(mesh);
-            planets.set(id, mesh);
-            placeOrUpdateDecal(id, data);
-        }
-        /** Populate and show the planet edit panel (or defaults for a new planet). */
-        function showPlanetEditPanel(planet = null) {
-            editingPlanet = planet;
-            planetNameInput.classList.remove('input-error');
-
-            if (editingPlanet) {
-                const data = editingPlanet.userData.data;
-                planetNameInput.value = data.name;
-                shapeTypeSelect.value = data.shape;
-                planetColorInput.value = data.color;
-            } else {
-                const existingNames = Array.from(sceneData.values()).map(entry => (entry && entry.name) ? entry.name : '');
-                planetNameInput.value = getNextSequentialName('Planet', existingNames);
-                shapeTypeSelect.value = 'Box';
-                planetColorInput.value = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
-            }
-
-            planetEditPanel.style.display = 'flex';
-            wasTypingBeforePlanetEdit = isTyping;
-            isTyping = true;
-
-            requestAnimationFrame(() => {
-                planetNameInput.focus();
-                if (!editingPlanet) {
-                    planetNameInput.select();
-                }
-            });
-        }
-
-        /** Hide the planet edit panel and reset state. */
-        function closePlanetEditPanel() {
-            planetEditPanel.style.display = 'none';
-            editingPlanet = null;
-            planetNameInput.classList.remove('input-error');
-            isTyping = wasTypingBeforePlanetEdit;
-            wasTypingBeforePlanetEdit = false;
-        }
-
-        /** Create and select a new empty note for a planet, auto-numbered. */
-        function addNewNote(planet) {
-            const planetId = planet.userData.id;
-            const planetData = sceneData.get(planetId);
-            if (!planetData) return;
-
-            const notes = Array.isArray(planetData.notes) ? [...planetData.notes] : [];
-            const existingNames = notes.map(note => (note && note.title) ? note.title : '');
-            const suggestedTitle = getNextSequentialName('Note', existingNames);
-
-            openNamePrompt({
-                title: 'Name your note',
-                defaultValue: suggestedTitle,
-                confirmLabel: 'Create Note',
-                onConfirm: (noteTitle) => {
-                    const updatedNotes = [...notes, { title: noteTitle, content: '' }];
-                    planetData.notes = updatedNotes;
-                    sceneData.set(planetId, planetData);
-                    saveDataToStorage();
-                    rebuildSceneFromData();
-                    pendingNoteOpen = { planetId, noteIndex: updatedNotes.length - 1, intersection: captureIntersectionSnapshot(lastIntersection) };
-                },
-            });
-        }
-
-        /**
-         * Keyboard movement with simple momentum. Disabled while typing to avoid accidental motion.
-         */
-        function handleCameraMovement() { const moveDirection = new THREE.Vector3(); if (!isTyping) { const forward = new THREE.Vector3(); camera.getWorldDirection(forward); const right = new THREE.Vector3().crossVectors(forward, camera.up); if (keyState['KeyW'] || keyState['ArrowUp']) moveDirection.add(forward); if (keyState['KeyS'] || keyState['ArrowDown']) moveDirection.sub(forward); if (keyState['KeyA'] || keyState['ArrowLeft']) moveDirection.sub(right); if (keyState['KeyD'] || keyState['ArrowRight']) moveDirection.add(right); if (keyState['KeyE']) moveDirection.y += 1; if (keyState['KeyQ']) moveDirection.y -= 1; } if (moveDirection.lengthSq() > 0) cameraVelocity.copy(moveDirection.normalize().multiplyScalar(moveSpeed)); camera.position.add(cameraVelocity); controls.target.add(cameraVelocity); cameraVelocity.multiplyScalar(DAMPING); }
-        
-        /**
-         * Raycast click on planets to toggle their on-planet UI.
-         * Ignores clicks that originate from UI elements or while dragging the camera.
-         */
-        function onPlanetClick(event) {
-            if (isDraggingCamera) return;
-            const uiElements = document.querySelectorAll('.planet-ui, .note-editor, #planet-edit-panel, #add-planet-btn, #confirm-modal, #name-prompt-modal');
-            for (const el of uiElements) {
-                if (el.contains(event.target)) return;
-            }
-            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-            raycaster.setFromCamera(mouse, camera);
-            const intersects = raycaster.intersectObjects(Array.from(planets.values()), true);
-
-            if (intersects.length > 0) {
-                lastIntersection = intersects[0];
-                let clickedPlanet = lastIntersection.object;
-                while (clickedPlanet.parent && !clickedPlanet.userData.id) {
-                    clickedPlanet = clickedPlanet.parent;
-                }
-                if (clickedPlanet.userData.id && planets.has(clickedPlanet.userData.id)) {
-                    if (selectedPlanet && selectedPlanet.userData.id === clickedPlanet.userData.id) return;
-                    if (activePlanetUI) activePlanetUI.element.style.display = 'none';
-                    selectedPlanet = planets.get(clickedPlanet.userData.id);
-                    activePlanetUI = selectedPlanet.label;
-                    activePlanetUI.element.style.display = 'block';
-                }
-            } else {
-                if (activePlanetUI) {
-                    activePlanetUI.element.style.display = 'none';
-                    activePlanetUI = null;
-                }
-                selectedPlanet = null;
-                lastIntersection = null;
-            }
-        }
-
-        /** Hide on-planet UI when moving too far from the selection to reduce clutter. */
-        function checkPlanetUIDistance() {
-            if (activePlanetUI && selectedPlanet) {
-                const distance = camera.position.distanceTo(selectedPlanet.position);
-                const cutoff = getSetting('ui.labelHideDistance', 20);
-                if (distance > cutoff) {
-                    activePlanetUI.element.style.display = 'none';
-                    activePlanetUI = null;
-                    selectedPlanet = null;
-                }
-            }
-        }
-        /** Easing helpers (comfort-first). */
-        function easeInOutCubic(t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
-        function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
-        function easeInOutQuad(t) { return t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2)/2; }
-        function resolveEasing(name) {
-            switch (name) {
-                case 'easeOutCubic': return easeOutCubic;
-                case 'easeInOutQuad': return easeInOutQuad;
-                case 'easeInOutCubic':
-                default: return easeInOutCubic;
-            }
-        }
-        /** Smooth camera tween to cycle through planets on Tab. */
-        function cycleToPlanet() {
-            const planetArray = Array.from(planets.values());
-            if (planetArray.length === 0) return;
-            // If a cycle is already in progress, cancel it and start a new one from the current pose
-            if (isCycling) isCycling = false;
-            isCycling = true;
-            cycleIndex = (cycleIndex + 1) % planetArray.length;
-
-            const targetPlanet = planetArray[cycleIndex];
-            const targetPosition = targetPlanet.position.clone();
-
-            // Maintain viewing direction relative to target: keep about 10 units away from the planet.
-            const direction = new THREE.Vector3().subVectors(camera.position, targetPosition).normalize();
-            const lockDistance = getSetting('cycle.distance', 10);
-            const newCameraPosition = new THREE.Vector3().addVectors(targetPosition, direction.multiplyScalar(lockDistance));
-
-            const duration = getSetting('cycle.durationMs', 350); // ms – quick, comfortable lock-on
-            const startPos = camera.position.clone();
-            const startTarget = controls.target.clone();
-            const startTime = performance.now();
-            const easingFn = resolveEasing(getSetting('cycle.easing', 'easeInOutCubic'));
-
-            // Prepare selection/UI immediately so the user perceives focus change
-            if (activePlanetUI) activePlanetUI.element.style.display = 'none';
-            selectedPlanet = targetPlanet;
-            activePlanetUI = selectedPlanet.label;
-            if (activePlanetUI) activePlanetUI.element.style.display = 'block';
-
-            function step(now) {
-                if (!isCycling) return;
-                const t = Math.min(1, (now - startTime) / duration);
-                const e = easingFn(t);
-                camera.position.lerpVectors(startPos, newCameraPosition, e);
-                controls.target.lerpVectors(startTarget, targetPosition, e);
-                controls.update();
-                if (t < 1) requestAnimationFrame(step);
-                else {
-                    // Snap to exact final state and zero momentum so we don't drift
-                    camera.position.copy(newCameraPosition);
-                    controls.target.copy(targetPosition);
-                    cameraVelocity.set(0, 0, 0);
-                    controls.update();
-                    isCycling = false;
-                }
-            }
-            requestAnimationFrame(step);
-        }
-        /** Keep composer sizes in sync with viewport. */
-        function onWindowResize() { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); labelRenderer.setSize(window.innerWidth, window.innerHeight); composer.setSize(window.innerWidth, window.innerHeight); }
-        
-        /**
-         * Draw a line from the editor panel to the planet's screen position to support spatial association.
-         */
-        function updateLineConnectors() {
-            const show = getSetting('ui.showConnector', true);
-            for (const editorState of openEditors.values()) {
-                const { element, planet, connector } = editorState;
-                if (!connector) continue;
-
-                if (!show || !planet || !element || element.style.display === 'none' || element.classList.contains('closing')) {
-                    connector.style.display = 'none';
-                    continue;
-                }
-
-                const projected = planet.position.clone().project(camera);
-                if (projected.z < -1 || projected.z > 1) {
-                    connector.style.display = 'none';
-                    continue;
-                }
-                const screenX = (projected.x * 0.5 + 0.5) * window.innerWidth;
-                const screenY = (-projected.y * 0.5 + 0.5) * window.innerHeight;
-                const uiRect = element.getBoundingClientRect();
-                const uiX = uiRect.left + uiRect.width / 2;
-                const uiY = uiRect.top + uiRect.height / 2;
-                const dx = screenX - uiX;
-                const dy = screenY - uiY;
-                const length = Math.hypot(dx, dy);
-                const angle = Math.atan2(dy, dx) * (180 / Math.PI);
-                connector.style.left = `${uiX}px`;
-                connector.style.top = `${uiY}px`;
-                connector.style.width = `${length}px`;
-                connector.style.transform = `rotate(${angle}deg)`;
-                connector.style.display = 'block';
-                connector.style.zIndex = `${Math.max(0, parseInt(element.style.zIndex || `${nextEditorZ}`, 10) - 1)}`;
-            }
-        }
-
-        /** Main render loop. */
-        function animate() {
-            requestAnimationFrame(animate);
-            if(!isCycling) handleCameraMovement();
-            controls.update();
-            checkPlanetUIDistance();
-            updateLineConnectors();
-            filmPass.uniforms.time.value = clock.getElapsedTime();
-            composer.render();
-            labelRenderer.render(scene, camera);
-        }
-
-        // Initial call
-        init();
+        window.addEventListener('DOMContentLoaded', () => {
+            AstroMind.init();
+        });
     </script>
 </body>
 </html>
