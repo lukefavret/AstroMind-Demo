@@ -205,10 +205,34 @@
             z-index: 3001;
         }
         .modal-buttons { display: flex; justify-content: center; gap: 15px; margin-top: 20px; }
+        .modal-content h3 { margin: 0 0 15px 0; color: #fff; font-weight: 600; }
+        .modal-input {
+            width: 100%;
+            padding: 10px;
+            font-size: 1em;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            border-radius: 0;
+            color: #fff;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        .modal-input:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.15);
+        }
+        .input-error {
+            border-color: rgba(220, 53, 69, 1) !important;
+            box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.4) !important;
+        }
         #modal-confirm-btn { background-color: rgba(220, 53, 69, 0.7); border-color: rgba(220, 53, 69, 1); }
         #modal-confirm-btn:hover { background-color: rgba(200, 48, 62, 0.9); }
         #modal-cancel-btn { background-color: rgba(255, 255, 255, 0.2); border-color: rgba(255,255,255,0.5); }
         #modal-cancel-btn:hover { background-color: rgba(255, 255, 255, 0.4); }
+        #name-prompt-confirm-btn { background-color: rgba(40, 167, 69, 0.7); border-color: rgba(40, 167, 69, 1); }
+        #name-prompt-confirm-btn:hover { background-color: rgba(33, 136, 56, 0.9); }
+        #name-prompt-cancel-btn { background-color: rgba(255, 255, 255, 0.2); border-color: rgba(255,255,255,0.5); }
+        #name-prompt-cancel-btn:hover { background-color: rgba(255, 255, 255, 0.4); }
 
         /* Editor resize affordances */
         .resize-handle {
@@ -305,13 +329,13 @@
         /* Screen-space connector line from editor to focused object */
         #line-connector {
             position: fixed;
-            height: 2px;
-            background-color: #000;
+            height: 3px;
+            background: linear-gradient(90deg, rgba(255, 255, 255, 0.85) 0%, rgba(0, 255, 255, 0.65) 100%);
             transform-origin: 0 50%;
             pointer-events: none;
             display: none;
             z-index: 998;
-            box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.4);
+            box-shadow: 0 0 8px rgba(0, 255, 255, 0.35);
         }
     </style>
     
@@ -432,6 +456,18 @@
         </div>
     </div>
 
+    <!-- Generic name prompt modal for new objects and notes -->
+    <div id="name-prompt-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h3 id="name-prompt-title">Name Item</h3>
+            <input id="name-prompt-input" class="modal-input" type="text" autocomplete="off">
+            <div class="modal-buttons">
+                <button id="name-prompt-confirm-btn" class="btn">Save</button>
+                <button id="name-prompt-cancel-btn" class="btn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS2DRenderer.js"></script>
@@ -481,6 +517,7 @@
         const deleteNoteBtn = document.getElementById('delete-note');
         const closeBtn = document.getElementById('close-btn');
         const addObjectBtn = document.getElementById('add-object-btn');
+        const lineConnector = document.getElementById('line-connector');
     const confirmModal = document.getElementById('confirm-modal');
     const confirmMessage = document.getElementById('confirm-message');
         const modalConfirmBtn = document.getElementById('modal-confirm-btn');
@@ -490,7 +527,24 @@
         const dragHandle = document.getElementById('drag-handle');
         const shapeEditPanel = document.getElementById('shape-edit-panel');
         const shapeCloseBtn = document.getElementById('shape-close-btn');
+        const shapeNameInput = document.getElementById('shape-name-input');
+        const shapeTypeSelect = document.getElementById('shape-type-select');
+        const shapeColorInput = document.getElementById('shape-color-input');
+        const namePromptModal = document.getElementById('name-prompt-modal');
+        const namePromptTitle = document.getElementById('name-prompt-title');
+        const namePromptInput = document.getElementById('name-prompt-input');
+        const namePromptConfirmBtn = document.getElementById('name-prompt-confirm-btn');
+        const namePromptCancelBtn = document.getElementById('name-prompt-cancel-btn');
         let deleteAction = null;
+        let activeNamePrompt = null;
+        let wasTypingBeforePrompt = false;
+        let wasTypingBeforeShapeEdit = false;
+
+        shapeNameInput.addEventListener('input', () => {
+            if (shapeNameInput.classList.contains('input-error')) {
+                shapeNameInput.classList.remove('input-error');
+            }
+        });
         
         // =================================================================================
         // SECTION: SETTINGS LOADER (single-file + localStorage overrides)
@@ -631,12 +685,118 @@
                 console.error("Error saving data to localStorage:", e);
             }
         }
-        
+
+        // =================================================================================
+        // SECTION: SHARED NAME ENTRY UTILITIES
+        // =================================================================================
+        /**
+         * Determine the next sequential default name for a given prefix.
+         * @param {string} prefix
+         * @param {string[]} existingNames
+         */
+        function getNextSequentialName(prefix, existingNames = []) {
+            let highest = 0;
+            const pattern = new RegExp(`^${prefix}\\s*(\\d+)$`, 'i');
+            for (const rawName of existingNames) {
+                if (typeof rawName !== 'string') continue;
+                const match = rawName.trim().match(pattern);
+                if (!match) continue;
+                const parsed = parseInt(match[1], 10);
+                if (!Number.isNaN(parsed) && parsed > highest) highest = parsed;
+            }
+            return `${prefix} ${highest + 1}`;
+        }
+
+        /**
+         * Display the shared naming modal, enforcing non-empty submissions.
+         * @param {{
+         *   title?: string,
+         *   defaultValue?: string,
+         *   confirmLabel?: string,
+         *   onConfirm?: (value: string) => void,
+         *   onCancel?: () => void
+         * }} options
+         */
+        function openNamePrompt(options = {}) {
+            const { title = 'Name Item', defaultValue = '', confirmLabel = 'Save', onConfirm, onCancel } = options;
+            activeNamePrompt = { onConfirm, onCancel };
+            namePromptTitle.textContent = title;
+            namePromptInput.value = typeof defaultValue === 'string' ? defaultValue : '';
+            namePromptInput.classList.remove('input-error');
+            namePromptConfirmBtn.textContent = confirmLabel;
+            namePromptModal.style.display = 'flex';
+            wasTypingBeforePrompt = isTyping;
+            isTyping = true;
+            requestAnimationFrame(() => {
+                namePromptInput.focus();
+                namePromptInput.select();
+            });
+        }
+
+        /** Hide and reset the shared naming modal. */
+        function closeNamePrompt() {
+            namePromptModal.style.display = 'none';
+            namePromptInput.value = '';
+            namePromptInput.classList.remove('input-error');
+            namePromptConfirmBtn.textContent = 'Save';
+            const restoreTyping = wasTypingBeforePrompt;
+            wasTypingBeforePrompt = false;
+            isTyping = restoreTyping;
+            activeNamePrompt = null;
+        }
+
+        function handleNamePromptConfirm() {
+            if (!activeNamePrompt) return;
+            const value = namePromptInput.value.trim();
+            if (!value) {
+                namePromptInput.classList.add('input-error');
+                namePromptInput.focus();
+                return;
+            }
+            const { onConfirm } = activeNamePrompt;
+            closeNamePrompt();
+            if (typeof onConfirm === 'function') onConfirm(value);
+        }
+
+        function handleNamePromptCancel() {
+            if (!activeNamePrompt) return;
+            const { onCancel } = activeNamePrompt;
+            closeNamePrompt();
+            if (typeof onCancel === 'function') onCancel();
+        }
+
+        namePromptInput.addEventListener('input', () => {
+            if (namePromptInput.classList.contains('input-error')) {
+                namePromptInput.classList.remove('input-error');
+            }
+        });
+        namePromptConfirmBtn.addEventListener('click', handleNamePromptConfirm);
+        namePromptCancelBtn.addEventListener('click', handleNamePromptCancel);
+        namePromptModal.addEventListener('click', (event) => {
+            if (event.target === namePromptModal) handleNamePromptCancel();
+        });
+        window.addEventListener('keydown', (event) => {
+            if (!activeNamePrompt) return;
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                handleNamePromptConfirm();
+            } else if (event.key === 'Escape') {
+                event.preventDefault();
+                handleNamePromptCancel();
+            }
+        });
+
         /**
          * Rebuild the live 3D scene from persisted data. Safe to call after any mutation.
          * Keeps selections if the object still exists.
          */
         function rebuildSceneFromData() {
+            const noteWasOpen = uiContainer.style.display !== 'none' && activeNote.object && activeNote.index >= 0;
+            const previousActiveNoteIndex = activeNote.index;
+            const previousActiveNoteId = noteWasOpen && activeNote.object && activeNote.object.userData
+                ? activeNote.object.userData.id
+                : null;
+
             // Clear existing scene objects (but not lights, ground, etc.)
             Array.from(objects.values()).forEach(obj => {
                 if (obj.label && obj.label.element && obj.label.element.parentNode) {
@@ -647,9 +807,19 @@
             });
             objects.clear();
 
+            let pendingNoteObject = null;
+            let nextActiveNoteObject = null;
+
             // Re-create objects from sceneData
             for (const [id, data] of sceneData.entries()) {
                 createObjectFromData(data, id);
+                const recreated = objects.get(id);
+                if (pendingNoteOpen && pendingNoteOpen.objectId === id) {
+                    pendingNoteObject = recreated;
+                }
+                if (previousActiveNoteId && previousActiveNoteId === id) {
+                    nextActiveNoteObject = recreated;
+                }
             }
 
             // After rebuilding, re-select object if it still exists
@@ -657,10 +827,39 @@
             if (selectedId && objects.has(selectedId)) {
                 selectedObject = objects.get(selectedId);
                 activeObjectUI = selectedObject.label;
-                activeObjectUI.element.style.display = 'block';
+                if (activeObjectUI) {
+                    activeObjectUI.element.style.display = 'block';
+                }
             } else {
                 selectedObject = null;
                 activeObjectUI = null;
+            }
+
+            if (pendingNoteObject && typeof pendingNoteOpen.noteIndex === 'number') {
+                openNoteEditor(pendingNoteObject, pendingNoteOpen.noteIndex);
+                pendingNoteOpen = null;
+            } else if (noteWasOpen) {
+                if (nextActiveNoteObject && Array.isArray(nextActiveNoteObject.userData.data.notes)) {
+                    const notesForObject = nextActiveNoteObject.userData.data.notes;
+                    if (previousActiveNoteIndex >= 0 && previousActiveNoteIndex < notesForObject.length) {
+                        activeNote = { object: nextActiveNoteObject, index: previousActiveNoteIndex };
+                        updateUIPanel(notesForObject[previousActiveNoteIndex]);
+                        uiContainer.style.display = 'flex';
+                        updateLineConnector();
+                    } else {
+                        activeNote = { object: null, index: -1 };
+                        uiContainer.style.display = 'none';
+                        if (lineConnector) {
+                            lineConnector.style.display = 'none';
+                        }
+                    }
+                } else {
+                    activeNote = { object: null, index: -1 };
+                    uiContainer.style.display = 'none';
+                    if (lineConnector) {
+                        lineConnector.style.display = 'none';
+                    }
+                }
             }
         }
 
@@ -738,7 +937,22 @@
             composer.addPass(filmPass);
 
             // Events: keep concise; prevent Tab from moving focus when cycling objects
-            window.addEventListener('resize', onWindowResize); window.addEventListener('keydown', (event) => { if(event.key === "Tab") { event.preventDefault(); if (!isTyping) cycleToObject(); } else { keyState[event.code] = true; } }); window.addEventListener('keyup', (event) => { keyState[event.code] = false; }); sceneContainer.addEventListener('mousedown', (e) => { sceneContainer.focus(); }); sceneContainer.addEventListener('click', onObjectClick);
+            window.addEventListener('resize', onWindowResize);
+            window.addEventListener('keydown', (event) => {
+                if (activeNamePrompt) {
+                    if (event.key === 'Tab') event.preventDefault();
+                    return;
+                }
+                if (event.key === 'Tab') {
+                    event.preventDefault();
+                    if (!isTyping) cycleToObject();
+                } else {
+                    keyState[event.code] = true;
+                }
+            });
+            window.addEventListener('keyup', (event) => { keyState[event.code] = false; });
+            sceneContainer.addEventListener('mousedown', (e) => { sceneContainer.focus(); });
+            sceneContainer.addEventListener('click', onObjectClick);
 
             // Accessibility: disable nav while typing
             noteTitleInput.addEventListener('focus', () => { isTyping = true; }); noteTitleInput.addEventListener('blur', () => { isTyping = false; }); noteContentInput.addEventListener('focus', () => { isTyping = true; }); noteContentInput.addEventListener('blur', () => { isTyping = false; });
@@ -750,10 +964,9 @@
             closeBtn.addEventListener('click', closeNoteEditorWithAnimation);
             modalConfirmBtn.addEventListener('click', () => { if (deleteAction) deleteAction(); });
             modalCancelBtn.addEventListener('click', hideModal);
-            const closeShapeEdit = () => { shapeEditPanel.style.display = 'none'; editingObject = null; };
             document.getElementById('save-shape-btn').addEventListener('click', saveShapeChanges);
-            document.getElementById('close-shape-edit-btn').addEventListener('click', closeShapeEdit);
-            shapeCloseBtn.addEventListener('click', closeShapeEdit);
+            document.getElementById('close-shape-edit-btn').addEventListener('click', closeShapeEditPanel);
+            shapeCloseBtn.addEventListener('click', closeShapeEditPanel);
             document.getElementById('delete-shape-btn').addEventListener('click', handleDeleteObjectFromShapeEditor);
 
             // Draggable + resizable editor
@@ -772,7 +985,7 @@
         function initResizeBR(element, handle) { let startX, startY, startWidth, startHeight; function doDrag(e) { e.preventDefault(); element.style.width = (startWidth + (e.clientX - startX)) + 'px'; element.style.height = (startHeight + (e.clientY - startY)) + 'px'; } function stopDrag() { document.documentElement.removeEventListener('mousemove', doDrag, false); document.documentElement.removeEventListener('mouseup', stopDrag, false); } handle.addEventListener('mousedown', (e) => { e.preventDefault(); e.stopPropagation(); startX = e.clientX; startY = e.clientY; const rect = element.getBoundingClientRect(); startWidth = rect.width; startHeight = rect.height; element.style.left = rect.left + 'px'; element.style.right = 'auto'; document.documentElement.addEventListener('mousemove', doDrag, false); document.documentElement.addEventListener('mouseup', stopDrag, false); }, false); }
         
         /** Open shape editor for new object creation. */
-        function handleAddNewObjectClick() { editingObject = null; showShapeEditPanel(); }
+        function handleAddNewObjectClick() { showShapeEditPanel(); }
         
         /**
          * Save the active note's content. Sets or clears a "sticky note" decal if notes exist.
@@ -781,10 +994,60 @@
         function saveNote() { if (!activeNote.object || activeNote.index < 0) return; const objectId = activeNote.object.userData.id; const objectData = sceneData.get(objectId); if (!objectData) return; const notes = [...(objectData.notes || [])]; notes[activeNote.index] = { title: noteTitleInput.value, content: noteContentInput.value }; const hasAnyNoteContent = notes.some(note => note.title || note.content); if (hasAnyNoteContent && !objectData.decal && lastIntersection) { const orientation = new THREE.Euler(); const matrix = new THREE.Matrix4().lookAt(lastIntersection.point, lastIntersection.point.clone().sub(lastIntersection.face.normal), activeNote.object.up); orientation.setFromRotationMatrix(matrix); objectData.decal = { position: lastIntersection.point.clone().applyMatrix4(new THREE.Matrix4().copy(activeNote.object.matrixWorld).invert()), orientation: {x: orientation.x, y: orientation.y, z: orientation.z} }; } else if (!hasAnyNoteContent) { objectData.decal = null; } objectData.notes = notes; sceneData.set(objectId, objectData); saveDataToStorage(); rebuildSceneFromData(); closeNoteEditorWithAnimation(); }
 
         /** Play CRT close animation then hide editor and clear activeNote. */
-        function closeNoteEditorWithAnimation() { uiContainer.classList.add('closing'); uiContainer.addEventListener('animationend', () => { uiContainer.style.display = 'none'; uiContainer.classList.remove('closing'); activeNote = { object: null, index: -1 }; lastIntersection = null; }, { once: true }); }
+        function closeNoteEditorWithAnimation() {
+            if (lineConnector) {
+                lineConnector.style.display = 'none';
+            }
+            uiContainer.classList.add('closing');
+            uiContainer.addEventListener('animationend', () => {
+                uiContainer.style.display = 'none';
+                uiContainer.classList.remove('closing');
+                activeNote = { object: null, index: -1 };
+                lastIntersection = null;
+            }, { once: true });
+        }
         
         /** Save object property edits or create a new object. */
-        function saveShapeChanges() { const newName = document.getElementById('shape-name-input').value; const newShape = document.getElementById('shape-type-select').value; const newColor = document.getElementById('shape-color-input').value; if (editingObject) { const objectId = editingObject.userData.id; const objectData = sceneData.get(objectId); if (objectData) { objectData.name = newName; objectData.shape = newShape; objectData.color = newColor; sceneData.set(objectId, objectData); } } else { const newId = crypto.randomUUID(); sceneData.set(newId, { name: newName, shape: newShape, color: newColor, position: { x: (Math.random() - 0.5) * 20, y: Math.random() * 2 + 1, z: (Math.random() - 0.5) * 20 }, notes: [], decal: null }); } saveDataToStorage(); rebuildSceneFromData(); shapeEditPanel.style.display = 'none'; editingObject = null; }
+        function saveShapeChanges() {
+            const newName = shapeNameInput.value.trim();
+            if (!newName) {
+                shapeNameInput.classList.add('input-error');
+                shapeNameInput.focus();
+                return;
+            }
+
+            const newShape = shapeTypeSelect.value;
+            const newColor = shapeColorInput.value;
+
+            if (editingObject) {
+                const objectId = editingObject.userData.id;
+                const objectData = sceneData.get(objectId);
+                if (objectData) {
+                    objectData.name = newName;
+                    objectData.shape = newShape;
+                    objectData.color = newColor;
+                    sceneData.set(objectId, objectData);
+                }
+            } else {
+                const newId = crypto.randomUUID();
+                sceneData.set(newId, {
+                    name: newName,
+                    shape: newShape,
+                    color: newColor,
+                    position: {
+                        x: (Math.random() - 0.5) * 20,
+                        y: Math.random() * 2 + 1,
+                        z: (Math.random() - 0.5) * 20,
+                    },
+                    notes: [],
+                    decal: null,
+                });
+            }
+
+            saveDataToStorage();
+            rebuildSceneFromData();
+            closeShapeEditPanel();
+        }
         
         /** Confirm delete object flow from shape editor. */
         function handleDeleteObjectFromShapeEditor() {
@@ -794,8 +1057,7 @@
             deleteAction = () => {
                 fadeAndDeleteObject(editingObject);
                 hideModal();
-                shapeEditPanel.style.display = 'none';
-                editingObject = null;
+                closeShapeEditPanel();
                 if (activeObjectUI) activeObjectUI.element.style.display = 'none';
                 activeObjectUI = null;
             };
@@ -877,36 +1139,92 @@
         /** Construct a THREE.Mesh from ObjectData and attach an on-object UI label. */
         function createObjectFromData(data, id) { const geometry = getGeometry(data.shape); const material = new THREE.MeshStandardMaterial({ color: data.color || "#ffffff", roughness: 0.5, metalness: 0.1 }); const mesh = new THREE.Mesh(geometry, material); mesh.position.set(data.position.x, data.position.y, data.position.z); mesh.castShadow = true; mesh.receiveShadow = true; mesh.userData = { id, data }; const objectDiv = document.createElement('div'); objectDiv.className = 'object-ui'; const header = document.createElement('div'); header.className = 'object-ui-header'; const title = document.createElement('h3'); title.textContent = data.name; const editBtn = document.createElement('button'); editBtn.className = 'edit-shape-btn'; editBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M12.854.146a.5.5 0 0 0-.707 0L10.5 1.793 14.207 5.5l1.647-1.646a.5.5 0 0 0 0-.708l-3-3zm.646 6.061L9.793 2.5 3.293 9H3.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.207l6.5-6.5zm-7.468 7.468A.5.5 0 0 1 6 13.5V13h-.5a.5.5 0 0 1-.5-.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.5-.5V10h-.5a.499.499 0 0 1-.175-.032l-.179.178a.5.5 0 0 0-.11.168l-2 5a.5.5 0 0 0 .65.65l5-2a.5.5 0 0 0 .168-.11l.178-.178z"/></svg>`; editBtn.onclick = (e) => { e.stopPropagation(); showShapeEditPanel(mesh); }; header.appendChild(title); header.appendChild(editBtn); const notesList = document.createElement('ul'); notesList.className = 'notes-list'; (data.notes || []).forEach((note, index) => { const li = document.createElement('li'); li.textContent = note.title || `Note ${index + 1}`; li.onclick = (e) => { e.stopPropagation(); openNoteEditor(mesh, index); }; notesList.appendChild(li); }); const addNoteBtn = document.createElement('button'); addNoteBtn.className = 'add-note-btn'; addNoteBtn.textContent = '+ New Note'; addNoteBtn.onclick = (e) => { e.stopPropagation(); addNewNote(mesh); }; objectDiv.appendChild(header); objectDiv.appendChild(notesList); objectDiv.appendChild(addNoteBtn); const objectLabel = new THREE.CSS2DObject(objectDiv); objectLabel.position.set(0, 1.5, 0); mesh.add(objectLabel); mesh.label = objectLabel; objectLabel.element.style.display = 'none'; scene.add(mesh); objects.set(id, mesh); placeOrUpdateDecal(id, data); }
         /** Populate and show the shape edit panel (or defaults for a new object). */
-        function showShapeEditPanel(object = null) { editingObject = object; if (editingObject) { const data = editingObject.userData.data; document.getElementById('shape-name-input').value = data.name; document.getElementById('shape-type-select').value = data.shape; document.getElementById('shape-color-input').value = data.color; } else { document.getElementById('shape-name-input').value = "New Shape"; document.getElementById('shape-type-select').value = "Box"; document.getElementById('shape-color-input').value = "#" + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0'); } shapeEditPanel.style.display = 'flex'; }
+        function showShapeEditPanel(object = null) {
+            editingObject = object;
+            shapeNameInput.classList.remove('input-error');
+
+            if (editingObject) {
+                const data = editingObject.userData.data;
+                shapeNameInput.value = data.name;
+                shapeTypeSelect.value = data.shape;
+                shapeColorInput.value = data.color;
+            } else {
+                const existingNames = Array.from(sceneData.values()).map(entry => (entry && entry.name) ? entry.name : '');
+                shapeNameInput.value = getNextSequentialName('Shape', existingNames);
+                shapeTypeSelect.value = 'Box';
+                shapeColorInput.value = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+            }
+
+            shapeEditPanel.style.display = 'flex';
+            wasTypingBeforeShapeEdit = isTyping;
+            isTyping = true;
+
+            requestAnimationFrame(() => {
+                shapeNameInput.focus();
+                if (!editingObject) {
+                    shapeNameInput.select();
+                }
+            });
+        }
+
+        /** Hide the shape edit panel and reset state. */
+        function closeShapeEditPanel() {
+            shapeEditPanel.style.display = 'none';
+            editingObject = null;
+            shapeNameInput.classList.remove('input-error');
+            isTyping = wasTypingBeforeShapeEdit;
+            wasTypingBeforeShapeEdit = false;
+        }
         
         /** Create and select a new empty note for an object, auto-numbered. */
         function addNewNote(object) {
             const objectId = object.userData.id;
             const objectData = sceneData.get(objectId);
             if (!objectData) return;
-            const notes = objectData.notes || [];
-            let highestNoteNumber = 0;
-            notes.forEach(note => {
-                if (note.title && note.title.startsWith('Note ')) {
-                    const numberPart = note.title.substring(5);
-                    const noteNumber = parseInt(numberPart, 10);
-                    if (!isNaN(noteNumber) && noteNumber > highestNoteNumber) {
-                        highestNoteNumber = noteNumber;
-                    }
-                }
+
+            const notes = Array.isArray(objectData.notes) ? [...objectData.notes] : [];
+            const existingNames = notes.map(note => (note && note.title) ? note.title : '');
+            const suggestedTitle = getNextSequentialName('Note', existingNames);
+
+            openNamePrompt({
+                title: 'Name your note',
+                defaultValue: suggestedTitle,
+                confirmLabel: 'Create Note',
+                onConfirm: (noteTitle) => {
+                    const updatedNotes = [...notes, { title: noteTitle, content: '' }];
+                    objectData.notes = updatedNotes;
+                    sceneData.set(objectId, objectData);
+                    saveDataToStorage();
+                    rebuildSceneFromData();
+                    pendingNoteOpen = { objectId, noteIndex: updatedNotes.length - 1 };
+                },
             });
-            const newNoteTitle = `Note ${highestNoteNumber + 1}`;
-            const newNoteIndex = notes.length;
-            notes.push({title: newNoteTitle, content: ''});
-            objectData.notes = notes;
-            sceneData.set(objectId, objectData);
-            saveDataToStorage();
-            rebuildSceneFromData();
-            pendingNoteOpen = { objectId, noteIndex: newNoteIndex };
         }
 
         /** Open the main note editor populated with the selected note. */
-        function openNoteEditor(object, index) { activeNote = { object, index }; const note = object.userData.data.notes[index]; updateUIPanel(note); uiContainer.style.display = 'flex'; }
+        function openNoteEditor(object, index) {
+            if (!object || typeof index !== 'number') return;
+            const notes = Array.isArray(object.userData.data.notes) ? object.userData.data.notes : [];
+            if (index < 0 || index >= notes.length) {
+                activeNote = { object: null, index: -1 };
+                uiContainer.style.display = 'none';
+                if (lineConnector) {
+                    lineConnector.style.display = 'none';
+                }
+                return;
+            }
+
+            activeNote = { object, index };
+            selectedObject = object;
+            activeObjectUI = object.label || null;
+            if (activeObjectUI) {
+                activeObjectUI.element.style.display = 'block';
+            }
+            const note = notes[index];
+            updateUIPanel(note);
+            uiContainer.style.display = 'flex';
+            updateLineConnector();
+        }
         /** Update editor inputs from Note content. */
         function updateUIPanel(note) { noteTitleInput.value = note.title || ""; noteContentInput.value = note.content || ""; }
         /**
@@ -1021,28 +1339,46 @@
          * Draw a line from the editor panel to the object's screen position to support spatial association.
          */
         function updateLineConnector() {
-            const lineConnector = document.getElementById('line-connector');
+            if (!lineConnector) return;
             const show = getSetting('ui.showConnector', true);
-            if (show && activeNote.object && uiContainer.style.display !== 'none') {
-                const objectPosition = activeNote.object.position.clone();
-                objectPosition.project(camera);
-                const screenX = (objectPosition.x * 0.5 + 0.5) * renderer.domElement.clientWidth;
-                const screenY = (-objectPosition.y * 0.5 + 0.5) * renderer.domElement.clientHeight;
-                const uiRect = uiContainer.getBoundingClientRect();
-                const uiX = uiRect.left;
-                const uiY = uiRect.top + uiRect.height / 2;
-                const dx = screenX - uiX;
-                const dy = screenY - uiY;
-                const length = Math.hypot(dx, dy);
-                const angle = Math.atan2(dy, dx) * (180 / Math.PI);
-                lineConnector.style.left = `${uiX}px`;
-                lineConnector.style.top = `${uiY}px`;
-                lineConnector.style.width = `${length}px`;
-                lineConnector.style.transform = `rotate(${angle}deg)`;
-                lineConnector.style.display = 'block';
-            } else {
+            const noteVisible = uiContainer.style.display !== 'none' && !uiContainer.classList.contains('closing');
+            const object = activeNote.object;
+            if (!show || !noteVisible || !object || !renderer) {
                 lineConnector.style.display = 'none';
+                return;
             }
+
+            const objectId = object.userData && object.userData.id;
+            if (!objectId || !objects.has(objectId) || !object.parent) {
+                lineConnector.style.display = 'none';
+                return;
+            }
+
+            const worldPosition = new THREE.Vector3();
+            object.getWorldPosition(worldPosition);
+            worldPosition.project(camera);
+
+            const screenX = (worldPosition.x * 0.5 + 0.5) * renderer.domElement.clientWidth;
+            const screenY = (-worldPosition.y * 0.5 + 0.5) * renderer.domElement.clientHeight;
+            const uiRect = uiContainer.getBoundingClientRect();
+
+            if (uiRect.width === 0 && uiRect.height === 0) {
+                lineConnector.style.display = 'none';
+                return;
+            }
+
+            const uiX = uiRect.left;
+            const uiY = uiRect.top + uiRect.height / 2;
+            const dx = screenX - uiX;
+            const dy = screenY - uiY;
+            const length = Math.hypot(dx, dy);
+            const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+
+            lineConnector.style.left = `${uiX}px`;
+            lineConnector.style.top = `${uiY}px`;
+            lineConnector.style.width = `${length}px`;
+            lineConnector.style.transform = `rotate(${angle}deg)`;
+            lineConnector.style.display = 'block';
         }
 
         /** Main render loop. */

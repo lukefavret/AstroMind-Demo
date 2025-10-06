@@ -11,6 +11,11 @@ Format (template):
 
 ---
 
+## 2025-10-05 — Restore note-object connector logic
+- Description: Reinstated and brightened the note-to-object connector line, kept it in sync through scene rebuilds, and reopened pending notes so spatial cues remain intact after naming flows.
+- Files touched: `index.html`
+- Notes: Connector visibility now tolerates modal animations and stale references.
+
 ## 2025-10-05 — Note editor handles & hover affordance
 - Description: Restyled the note editor resize handles into classic right-angle triangles and added hover/focus feedback to the "+ New Note" button for clearer interactivity cues.
 - Files touched: `index.html`
