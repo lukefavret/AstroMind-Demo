@@ -1,56 +1,68 @@
-# AstroMind-Demo
-https://lukefavret.github.io/AstroMind-Demo/
-This is a very WIP prototype, and a barebones ReadMe. 
-A 3D Mind Mapping tool created due to alleviate difficulties in organizing information which can arise from various neurodivergences like ADHD, or "folks who think b etter in SPACE!"
+# AstroMind Demo
+
+AstroMind is a spatial “idea-verse” prototype that maps projects as celestial systems. Planets hold primary topics, moons and satellites break work into increasingly fine details, and shimmering trade routes highlight cross-cutting links. Everything is rendered in a retro analog-sci-fi aesthetic with CRT post-processing, a starfield skybox, and ambient synth hums.
 
 ## Highlights
-- Spatial canvas with a procedural star field and soft CRT post‑processing
-- Keyboard/mouse flight: WASD/QE to move, drag to look, Tab to cycle focus
-- Create/edit/delete planets with on‑planet labels (title + notes list)
-- Multiple notes open at once as draggable/resizable panels, each with a “power‑off” close animation
-- Per‑editor screen‑space connector lines that point back to the source planet (toggleable)
-- Sticky‑note decals appear on planets that have notes
-- Names required on create with helpful defaults (Planet N / Note N); cancellable flow
-- Randomized default geometry when creating a new planet for a playful start
-- Everything saved to localStorage and restored on reload
+- **Recursive solar hierarchy** – Create, edit, and delete Planets → Moons → Satellites with orbiting motion and automatic parent/child wiring.
+- **Constellation relationships** – Draw persistent relationship lines between any two objects to represent lateral associations.
+- **Analog sci-fi presentation** – Momentum flight controls, easing focus jumps, CRT scanlines, chromatic aberration, ambient hum, and retro UI flourishes.
+- **Tethered editing panels** – Selecting an object opens a floating, distance-sensitive panel anchored to that body for renaming, describing, coloring, spawning children, and managing relationships.
+- **Local-first persistence** – All entities and links are serialized to `localStorage` (with automatic migration from the legacy planet + notes format). Reloading restores the whole solar system instantly.
 
 ## Quick start
-Visit the repo's github pages page to check it out live:
-https://lukefavret.github.io/AstroMind-Demo/
-or:
-1) Open `index.html` in a modern desktop browser.
-2) Move around, create a few planets, and add notes. Everything autosaves locally.
+1. Clone or download the repo.
+2. Open `index.html` in a modern desktop browser (Chrome, Edge, Firefox, or Safari).
+3. Explore with the controls below, spawn new celestial ideas, and watch everything auto-save locally.
 
-Optional: Deploy to GitHub Pages by serving this repo as a static site — no build step needed.
+GitHub Pages friendly: the demo works as-is when the repo is served statically.
 
-## Controls at a glance
-- Move: W/A/S/D (strafe), Q/E (down/up)
-- Look: click+drag
-- Focus cycling: Tab jumps to the next planet and eases the camera into place
-- Interact: click a planet’s “+ New Note” or a note title to open editors
-- Editors: drag by header; resize with corner handles; close with the round power button
+## Controls
+- **Flight:** `W/A/S/D` strafing, `Q/E` vertical thrust, hold the left mouse button to steer (pointer lock with momentum-based damping).
+- **Focus:** `Tab` cycles through all planets with a smooth dolly and reorientation.
+- **Select:** Click any planet, moon, or satellite to focus it and open its panel.
+- **Create:** Use `+ New Planet` or the `+ Moon / + Satellite` buttons inside the panel.
+- **Relationships:** From a panel, choose “Link Object”, select a target, and optionally name the connection. Remove links from the panel list.
 
-Tip: Navigation pauses while typing, so you won’t drift when you’re in an input field.
+Tips:
+- Panels fade when you drift too far; fly back or Tab-focus to refresh them.
+- Hold `Shift` while flying to engage a speed boost.
 
-## Architecture (single‑file by design)
-- One HTML file (`index.html`) contains HTML, CSS, and JS.
-- Three.js is loaded via CDN; CSS2DRenderer is used for 2D labels.
-- No bundlers, no external services. Ideal for GitHub Pages and quick sharing.
-- Persistence: a Map of planetId → PlanetData is stored in `localStorage`.
+## Data model & persistence
+The scene is stored under the key `astroMind-scene-data` with the following structure:
 
-Data shape (simplified):
-- PlanetData: { name, shape, color, position, notes[], decal? }
-- Note: { title, content }
+```json
+{
+  "version": 2,
+  "entities": {
+    "<id>": {
+      "id": "uuid",
+      "type": "planet" | "moon" | "satellite",
+      "name": "string",
+      "description": "string",
+      "color": "#rrggbb" | "hsl()",
+      "size": number,
+      "parentId": "uuid | null",
+      "orbitRadius": number,
+      "orbitSpeed": number,
+      "orbitPhase": number,
+      "position": { "x": number, "y": number, "z": number },
+      "createdAt": epochMillis
+    }
+  },
+  "relationships": {
+    "<relationshipId>": { "id": "uuid", "from": "uuid", "to": "uuid", "label": "string", "color": "#rrggbb" }
+  }
+}
+```
 
-## Settings and persistence
-- Settings live inside `index.html` as an embedded JSON block and can be overridden via `localStorage`.
-- A small runtime API is exposed for tweaks:
-	- `AstroMind.settings` (read current)
-	- `AstroMind.set(partial)` (persist overrides and apply)
-	- `AstroMind.resetSettings()` (clear overrides)
-- Examples of adjustable parameters: movement speed/damping, focus easing/duration, post‑processing toggles, connector visibility, decal sizing/opacity, and UI auto‑hide.
+Legacy saves that contained planets with note lists are migrated automatically into a planet → “Legacy Notes” moon → satellite stack.
 
-### Compatibility
-- Existing saves continue working because the serialized data format and storage key remain unchanged during the terminology update.
+## Architecture notes
+- The entire experience lives in `index.html` (HTML + CSS + JS) with CDN-hosted Three.js extras (`EffectComposer`, `FilmPass`, `RGBShiftShader`, `CSS2DRenderer`).
+- Scene management is handled by modular classes inside the module script (`DataStore`, `SceneManager`, `PanelManager`, etc.) for clarity while staying bundle-free.
+- Visual polish includes a shader-based skybox, procedural star points, CRT overlay, film grain, and chromatic aberration.
+- Audio feedback uses the Web Audio API (no external assets) to synthesize hums, whooshes, and fades.
 
-Tags: Spatial Computing, Personal Knowledge Management, HCI, Creative Technology, and Accessibility.
+## Contributing
+This is a prototype aimed at rapid experimentation. Keep changes self-contained inside `index.html`, prefer modular helper classes/functions, and document new subsystems with inline comments so future contributors can navigate the single-file architecture quickly.
+
