@@ -11,6 +11,25 @@ Format (template):
 
 ---
 
+## 2025-10-06 — Update Copilot instructions to match code
+- Description: Refreshed `.github/copilot-instructions.md` to reflect implemented features: concurrent note editors with per-editor connectors and settings toggle, enforced naming with sequential defaults for shapes/notes, randomized default shape on create, and delete button visibility rules. Fixed outdated reference to a non-existent base instructions file and pointed to the PR template.
+- Files touched: `.github/copilot-instructions.md`, `ITERATION_LOG.md`
+
+## 2025-10-06 — Stagger note editor spawning
+- Description: Added a smart placement routine that cascades new note editors across available screen space so freshly opened notes avoid stacking directly atop existing ones.
+- Files touched: `index.html`
+- Notes: Falls back to the default corner if the viewport is saturated.
+
+## 2025-10-06 — Reinstate live note connectors
+- Description: Re-added the screen-space lines linking each open note editor to its source object with proper z-ordering and lifecycle handling so multi-note sessions regain their spatial cues.
+- Files touched: `index.html`
+- Notes: Connectors now live alongside editors in the overlay root and are cleaned up per-instance.
+
+## 2025-10-05 — Restore multi-note editor functionality
+- Description: Hardened editor instantiation to read note data from the scene store and keep open editors synchronized after scene rebuilds so multiple notes can open concurrently without blank panels.
+- Files touched: `index.html`
+- Notes: Refreshes per-editor content unless the field is actively being edited.
+
 ## 2025-10-05 — Require names before create (shapes & notes)
 - Description: Enforced non-empty names when creating shapes and notes to prevent accidental clutter. Prefills sequential defaults ("Shape N" / "Note N"), auto-focuses/selects the name, blocks save on empty, and Cancel discards the new item. Note creation is deferred until Save.
 - Files touched: `index.html`
