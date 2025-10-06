@@ -35,10 +35,12 @@ You must read and follow the guidance in `handover_instructions.md` before makin
 - Post-processing: CRT-style pass (RGB offset, vignette) and scanlines.
 - UI: Frosty-glass panels, dark mode, minimal chrome that fits the analog/CRT vibe.
 - Objects: Create/edit/delete objects (fade-out on delete) with on-object CSS2D UI showing title and notes list.
-- Notes: Multiple notes per object; draggable/resizable main editor panel with CRT "power-off" close animation.
-- Spatial linkage: Dynamic screen-space line connecting the open editor to its parent object.
+- Notes: Multiple notes per object; multiple note editor panels can be open concurrently. Each editor is draggable/resizable and has a CRT "power-off" close animation.
+- Spatial linkage: Per-editor screen-space connector lines link each open editor to its parent object, with proper z-ordering. Connector visibility is toggleable via settings.
 - Sticky-note decals: When notes exist, a subtle sticky-note DecalGeometry is placed on the object and persisted.
 - Persistence: All scene state is saved to localStorage and reloaded on startup.
+ - Creation flow: Names are required when creating shapes and notes. Default sequential names ("Shape N" / "Note N") are suggested and can be edited before saving. Cancel aborts creation.
+ - Shape editor UX: Delete button is hidden while creating a brand-new shape and only shown for existing objects. Default shape selection on create is randomized.
 
 ## Planned/Optional Features (not yet implemented in code)
 - AI assistance in the note editor (e.g., "Summarize" and "Brainstorm" via Gemini API). Treat this as planned; do not add networked backends. If implemented, it must be optional, keyed via local settings, and keep the single-file constraint.
@@ -50,11 +52,12 @@ You must read and follow the guidance in `handover_instructions.md` before makin
 - Minimal, targeted edits: Prefer the smallest diffs; avoid broad refactors unless explicitly requested.
 - Comment non-obvious code: Especially spatial UI math, accessibility decisions, or aesthetic rationale.
 - No external services/state: Only browser localStorage for persistence; no backend. Any AI calls must be clearly optional and isolated.
+ - Settings: Behavior toggles (e.g., connector visibility) and visual parameters are managed via a simple settings object persisted to localStorage; keep new controls consistent with this pattern.
 
 ## References
 - `handover_instructions.md`: Project vision, workflow, and feature list.
 - `README.md`: High-level goals and intent.
-- `.github/instructions/base.instructions.md`: General coding guidelines.
+- `.github/pull_request_template.md`: PR checklist and conventions.
 
 ---
 Update this file as the project evolves. Remove or revise sections as new patterns emerge.
