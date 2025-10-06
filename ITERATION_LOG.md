@@ -11,6 +11,11 @@ Format (template):
 
 ---
 
+## 2025-10-06 — Stagger note editor spawning
+- Description: Added a smart placement routine that cascades new note editors across available screen space so freshly opened notes avoid stacking directly atop existing ones.
+- Files touched: `index.html`
+- Notes: Falls back to the default corner if the viewport is saturated.
+
 ## 2025-10-06 — Reinstate live note connectors
 - Description: Re-added the screen-space lines linking each open note editor to its source object with proper z-ordering and lifecycle handling so multi-note sessions regain their spatial cues.
 - Files touched: `index.html`

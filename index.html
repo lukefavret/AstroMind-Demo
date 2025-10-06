@@ -509,7 +509,6 @@
         let selectedObject = null, editingObject = null, lastIntersection = null, pendingNoteOpen = null, isDraggingCamera = false;
         const openEditors = new Map();
         let nextEditorZ = 1100;
-        let cascadeIndex = 0;
         let activeObjectUI = null, cycleIndex = -1, isCycling = false;
     const keyState = {};
     let isTyping = false;
@@ -978,6 +977,76 @@
             }
         }
 
+        function getExistingEditorRects(excludeElement) {
+            return Array.from(openEditors.values())
+                .filter(state => state.element && state.element !== excludeElement)
+                .map(state => state.element.getBoundingClientRect());
+        }
+
+        function findEditorSpawnPosition(element) {
+            if (!element) {
+                return { top: 20, left: Math.max(20, window.innerWidth - 320) };
+            }
+
+            const margin = 20;
+            const rect = element.getBoundingClientRect();
+            const width = rect.width || element.offsetWidth || 300;
+            const height = rect.height || element.offsetHeight || 260;
+            const minLeft = margin;
+            const maxLeft = Math.max(minLeft, window.innerWidth - width - margin);
+            const maxTop = Math.max(margin, window.innerHeight - height - margin);
+            const preferredLeft = maxLeft;
+            const preferredTop = margin;
+            const verticalStep = Math.max(40, Math.round(height * 0.25));
+            const horizontalStep = Math.max(40, Math.round(width * 0.25));
+            const maxRows = Math.max(1, Math.floor((maxTop - margin) / verticalStep) + 1);
+            const maxCols = Math.max(1, Math.floor((maxLeft - minLeft) / horizontalStep) + 1);
+            const existingRects = getExistingEditorRects(element);
+
+            const collides = (top, left) => {
+                const right = left + width;
+                const bottom = top + height;
+                return existingRects.some(r => !(right <= r.left || left >= r.right || bottom <= r.top || top >= r.bottom));
+            };
+
+            const candidates = [];
+            for (let diag = 0; diag < maxRows + maxCols; diag++) {
+                for (let row = 0; row <= diag; row++) {
+                    const col = diag - row;
+                    if (row >= maxRows || col >= maxCols) continue;
+                    const top = margin + row * verticalStep;
+                    const left = preferredLeft - col * horizontalStep;
+                    if (top > maxTop || left < minLeft) continue;
+                    candidates.push({ top, left });
+                }
+            }
+
+            candidates.push({
+                top: Math.min(preferredTop, maxTop),
+                left: Math.min(Math.max(minLeft, preferredLeft), maxLeft),
+            });
+
+            for (const candidate of candidates) {
+                if (!collides(candidate.top, candidate.left)) {
+                    return candidate;
+                }
+            }
+
+            return {
+                top: Math.min(preferredTop, maxTop),
+                left: Math.min(Math.max(minLeft, preferredLeft), maxLeft),
+            };
+        }
+
+        function positionEditor(editorState) {
+            if (!editorState || !editorState.element) return;
+            const { element } = editorState;
+            element.style.right = 'auto';
+            const { top, left } = findEditorSpawnPosition(element);
+            element.style.top = `${top}px`;
+            element.style.left = `${left}px`;
+        }
+
         function attachEditorEvents(editorState) {
             const { element, dragHandle, resizeBL, resizeBR, titleInput, contentInput, saveBtn, deleteBtn, closeBtn } = editorState;
             if (dragHandle) initDrag(element, dragHandle);
@@ -1036,9 +1105,7 @@
             editorElement.style.display = 'flex';
             editorElement.dataset.editorKey = key;
             editorElement.style.zIndex = `${++nextEditorZ}`;
-            const offset = (cascadeIndex++ % 6) * 30;
-            editorElement.style.top = `${20 + offset}px`;
-            editorElement.style.right = '20px';
+            editorElement.style.visibility = 'hidden';
             editorElement.style.left = 'auto';
 
             const titleInput = editorElement.querySelector('.note-title');
@@ -1073,6 +1140,8 @@
 
             attachEditorEvents(editorState);
             editorsRoot.appendChild(editorElement);
+            positionEditor(editorState);
+            editorElement.style.visibility = 'visible';
             openEditors.set(key, editorState);
             syncEditorContent(editorState);
             focusEditor(editorState);
