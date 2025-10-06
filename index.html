@@ -404,7 +404,6 @@
             </div>
             <div class="resize-handle resize-handle-bl"></div>
             <div class="resize-handle resize-handle-br"></div>
-            <div class="note-connector"></div>
         </div>
     </template>
 
@@ -972,6 +971,9 @@
             if (!editorState || !editorState.element) return;
             editorState.element.style.zIndex = `${++nextEditorZ}`;
             if (editorState.connector) {
+                if (!editorState.connector.isConnected) {
+                    editorsRoot.appendChild(editorState.connector);
+                }
                 editorState.connector.style.zIndex = `${nextEditorZ - 1}`;
             }
         }
@@ -1047,7 +1049,9 @@
             const dragHandle = editorElement.querySelector('.drag-handle');
             const resizeBL = editorElement.querySelector('.resize-handle-bl');
             const resizeBR = editorElement.querySelector('.resize-handle-br');
-            const connector = editorElement.querySelector('.note-connector');
+            const connector = document.createElement('div');
+            connector.className = 'note-connector';
+            editorsRoot.appendChild(connector);
 
             const editorState = {
                 key,
@@ -1077,7 +1081,7 @@
 
         function destroyEditor(editorState, { skipAnimation = false } = {}) {
             if (!editorState) return;
-            const { element, key } = editorState;
+            const { element, key, connector } = editorState;
             if (!element) return;
             if (!skipAnimation && element.classList.contains('closing')) return;
 
@@ -1087,12 +1091,14 @@
 
             if (openEditors.has(key)) openEditors.delete(key);
             if (element.parentNode) element.parentNode.removeChild(element);
+            if (connector && connector.parentNode) connector.parentNode.removeChild(connector);
         }
 
         function closeNoteEditorWithAnimation(editorState) {
             if (!editorState || !editorState.element) return;
             const { element } = editorState;
             if (element.classList.contains('closing')) return;
+            if (editorState.connector) editorState.connector.style.display = 'none';
             element.classList.add('closing');
             element.addEventListener('animationend', () => {
                 element.classList.remove('closing');
@@ -1459,12 +1465,15 @@
                     continue;
                 }
 
-                const objectPosition = object.position.clone();
-                objectPosition.project(camera);
-                const screenX = (objectPosition.x * 0.5 + 0.5) * renderer.domElement.clientWidth;
-                const screenY = (-objectPosition.y * 0.5 + 0.5) * renderer.domElement.clientHeight;
+                const projected = object.position.clone().project(camera);
+                if (projected.z < -1 || projected.z > 1) {
+                    connector.style.display = 'none';
+                    continue;
+                }
+                const screenX = (projected.x * 0.5 + 0.5) * window.innerWidth;
+                const screenY = (-projected.y * 0.5 + 0.5) * window.innerHeight;
                 const uiRect = element.getBoundingClientRect();
-                const uiX = uiRect.left;
+                const uiX = uiRect.left + uiRect.width / 2;
                 const uiY = uiRect.top + uiRect.height / 2;
                 const dx = screenX - uiX;
                 const dy = screenY - uiY;

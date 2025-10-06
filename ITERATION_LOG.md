@@ -11,6 +11,11 @@ Format (template):
 
 ---
 
+## 2025-10-06 — Reinstate live note connectors
+- Description: Re-added the screen-space lines linking each open note editor to its source object with proper z-ordering and lifecycle handling so multi-note sessions regain their spatial cues.
+- Files touched: `index.html`
+- Notes: Connectors now live alongside editors in the overlay root and are cleaned up per-instance.
+
 ## 2025-10-05 — Restore multi-note editor functionality
 - Description: Hardened editor instantiation to read note data from the scene store and keep open editors synchronized after scene rebuilds so multiple notes can open concurrently without blank panels.
 - Files touched: `index.html`
