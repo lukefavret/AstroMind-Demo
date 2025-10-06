@@ -11,6 +11,10 @@ Format (template):
 
 ---
 
+## 2025-10-06 — Update Copilot instructions to match code
+- Description: Refreshed `.github/copilot-instructions.md` to reflect implemented features: concurrent note editors with per-editor connectors and settings toggle, enforced naming with sequential defaults for shapes/notes, randomized default shape on create, and delete button visibility rules. Fixed outdated reference to a non-existent base instructions file and pointed to the PR template.
+- Files touched: `.github/copilot-instructions.md`, `ITERATION_LOG.md`
+
 ## 2025-10-06 — Stagger note editor spawning
 - Description: Added a smart placement routine that cascades new note editors across available screen space so freshly opened notes avoid stacking directly atop existing ones.
 - Files touched: `index.html`
