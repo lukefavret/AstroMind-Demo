@@ -11,6 +11,14 @@ Format (template):
 
 ---
 
+## 2025-10-05 — Require names before create (shapes & notes)
+- Description: Enforced non-empty names when creating shapes and notes to prevent accidental clutter. Prefills sequential defaults ("Shape N" / "Note N"), auto-focuses/selects the name, blocks save on empty, and Cancel discards the new item. Note creation is deferred until Save.
+- Files touched: `index.html`
+- Notes: Delete is hidden for brand-new shapes until they exist; inline validation styling on name fields.
+
+## 2025-10-05 — Fix delete behaviors
+- Description: Made the note editor’s delete button remove only the selected note (with confirmation). Restored object deletion via a new "Delete Object" button in the shape edit panel, with its own confirmation.
+
 ## 2025-10-05 — Note editor handles & hover affordance
 - Description: Restyled the note editor resize handles into classic right-angle triangles and added hover/focus feedback to the "+ New Note" button for clearer interactivity cues.
 - Files touched: `index.html`
