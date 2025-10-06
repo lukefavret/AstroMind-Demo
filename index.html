@@ -39,7 +39,7 @@
         /* ===============================
            Note Editor Panel (frosty glass)
            =============================== */
-        #ui-container {
+        .note-editor {
             position: fixed;
             top: 20px;
             right: 20px;
@@ -63,11 +63,11 @@
         }
 
         /* CRT "power-off" close animation for note editor */
-        #ui-container.closing {
+        .note-editor.closing {
             animation: crt-flicker-out 400ms forwards;
         }
 
-        #ui-container.closing > * {
+        .note-editor.closing > * {
             visibility: hidden; /* Hide content during animation */
         }
 
@@ -79,7 +79,7 @@
         }
 
         /* Drag handle targets mouse movement only (no visible chrome) */
-        #drag-handle {
+        .note-editor .drag-handle {
             position: absolute;
             top: 0;
             left: 0;
@@ -88,7 +88,7 @@
             cursor: move;
         }
 
-        #note-title {
+        .note-editor .note-title {
             font-size: 1.2em;
             font-weight: bold;
             color: #fff;
@@ -100,13 +100,13 @@
             flex-shrink: 0;
             margin: 0 20px; /* Add margin to align with padding */
         }
-        #note-title:focus { outline: none; border-bottom-color: #fff; }
-        #note-title::placeholder { color: rgba(255, 255, 255, 0.7); }
+        .note-editor .note-title:focus { outline: none; border-bottom-color: #fff; }
+        .note-editor .note-title::placeholder { color: rgba(255, 255, 255, 0.7); }
 
-        #note-content {
+        .note-editor .note-content {
             font-size: 1em;
             min-height: 150px;
-            resize: none; 
+            resize: none;
             background: rgba(255, 255, 255, 0.2);
             color: #fff;
             border: 1px solid rgba(255, 255, 255, 0.5);
@@ -116,17 +116,18 @@
             flex-grow: 1;
             margin: 0 20px;
         }
-        #note-content:focus { outline: none; border-color: #fff; box-shadow: 0 0 5px rgba(255, 255, 255, 0.5); }
-        #note-content::placeholder { color: rgba(255, 255, 255, 0.7); }
+        .note-editor .note-content:focus { outline: none; border-color: #fff; box-shadow: 0 0 5px rgba(255, 255, 255, 0.5); }
+        .note-editor .note-content::placeholder { color: rgba(255, 255, 255, 0.7); }
         /* Action buttons in note editor */
         .button-group {
             display: flex;
             justify-content: flex-end; /* Align buttons to the right */
             gap: 10px;
-            flex-shrink: 0; 
+            flex-shrink: 0;
             margin: 0 20px;
             padding-bottom: 20px;
         }
+
         .btn {
             padding: 10px 15px;
             border: 1px solid rgba(255, 255, 255, 0.5);
@@ -139,24 +140,28 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            flex-grow: 0; 
-            flex-shrink: 0; 
+            flex-grow: 0;
+            flex-shrink: 0;
         }
-        .btn:hover { background-color: rgba(255, 255, 255, 0.6); transform: translateY(-2px); }
 
-        #save-note {
+        .btn:hover {
+            background-color: rgba(255, 255, 255, 0.6);
+            transform: translateY(-2px);
+        }
+
+        .note-editor .note-save-btn {
             background-color: rgba(40, 167, 69, 0.7);
             border-color: rgba(40, 167, 69, 1);
         }
-        #save-note:hover {
+        .note-editor .note-save-btn:hover {
              background-color: rgba(33, 136, 56, 0.9);
         }
 
-        #delete-note, #delete-shape-btn { 
-            background-color: rgba(220, 53, 69, 0.7); 
-            border-color: rgba(220, 53, 69, 1); 
+        .note-editor .note-delete-btn, #delete-shape-btn {
+            background-color: rgba(220, 53, 69, 0.7);
+            border-color: rgba(220, 53, 69, 1);
         }
-        #delete-note:hover, #delete-shape-btn:hover { 
+        .note-editor .note-delete-btn:hover, #delete-shape-btn:hover {
             background-color: rgba(200, 48, 62, 0.9);
         }
         #delete-note svg { width: 1.2em; height: 1.2em; }
@@ -235,7 +240,7 @@
         #name-prompt-cancel-btn:hover { background-color: rgba(255, 255, 255, 0.4); }
 
         /* Editor resize affordances */
-        .resize-handle {
+        .note-editor .resize-handle {
             position: absolute;
             width: 18px;
             height: 18px;
@@ -243,28 +248,28 @@
             pointer-events: auto;
             transition: filter 0.2s ease;
         }
-        #resize-handle-bl {
+        .note-editor .resize-handle-bl {
             bottom: 5px;
             left: 5px;
             cursor: nesw-resize;
             background: linear-gradient(225deg, transparent 50%, rgba(255, 255, 255, 0.75) 50%);
         }
-        #resize-handle-br {
+        .note-editor .resize-handle-br {
             bottom: 5px;
             right: 5px;
             cursor: nwse-resize;
             background: linear-gradient(135deg, transparent 50%, rgba(255, 255, 255, 0.75) 50%);
         }
-        #resize-handle-bl:hover, #resize-handle-br:hover {
+        .note-editor .resize-handle-bl:hover, .note-editor .resize-handle-br:hover {
             filter: brightness(1.25);
         }
 
         /* Minimal close icon (kept simple for readability & CRT feel) */
-        #close-btn { position: absolute; top: 5px; right: 5px; width: 20px; height: 20px; cursor: pointer; opacity: 0.8; transition: opacity 0.2s; }
-        #close-btn:hover { opacity: 1; }
-        #close-btn::before, #close-btn::after { content: ''; position: absolute; top: 9px; left: 2px; width: 16px; height: 2px; background-color: #fff; }
-        #close-btn::before { transform: rotate(45deg); }
-        #close-btn::after { transform: rotate(-45deg); }
+        .note-editor .note-close-btn { position: absolute; top: 5px; right: 5px; width: 20px; height: 20px; cursor: pointer; opacity: 0.8; transition: opacity 0.2s; }
+        .note-editor .note-close-btn:hover { opacity: 1; }
+        .note-editor .note-close-btn::before, .note-editor .note-close-btn::after { content: ''; position: absolute; top: 9px; left: 2px; width: 16px; height: 2px; background-color: #fff; }
+        .note-editor .note-close-btn::before { transform: rotate(45deg); }
+        .note-editor .note-close-btn::after { transform: rotate(-45deg); }
         #shape-close-btn { position: absolute; top: 8px; right: 10px; width: 18px; height: 18px; cursor: pointer; opacity: 0.75; transition: opacity 0.2s; }
         #shape-close-btn:hover { opacity: 1; }
         #shape-close-btn::before, #shape-close-btn::after { content: ''; position: absolute; top: 8px; left: 2px; width: 14px; height: 2px; background-color: #fff; }
@@ -327,7 +332,7 @@
         .form-group input[type="color"] { padding: 2px; height: 35px; }
         
         /* Screen-space connector line from editor to focused object */
-        #line-connector {
+        .note-connector {
             position: fixed;
             height: 2px;
             background-color: #000;
@@ -381,7 +386,26 @@
 <body>
     <!-- WebGL mount and 2D overlay renderers attach to this container -->
     <div id="scene-container" tabindex="0"></div>
-    <div id="line-connector"></div>
+    <div id="note-editors-root"></div>
+    <template id="note-editor-template">
+        <div class="note-editor" style="display: none;">
+            <div class="drag-handle"></div>
+            <div class="note-close-btn" title="Close"></div>
+            <input type="text" class="note-title" placeholder="Note Title">
+            <textarea class="note-content" placeholder="Write your note here..."></textarea>
+            <div class="button-group">
+                <button class="btn note-save-btn">Save</button>
+                <button class="btn note-delete-btn" title="Delete">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z"/>
+                        <path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3V2h11v1z"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="resize-handle resize-handle-bl"></div>
+            <div class="resize-handle resize-handle-br"></div>
+        </div>
+    </template>
 
     <!-- Lightweight instructions overlay to reduce cognitive load for first-time users -->
     <div class="instructions">
@@ -391,24 +415,7 @@
         <p>Click an object to view its notes.</p>
         <p>UI hides when you move away.</p>
     </div>
-    <!-- Main Note Editor (draggable, resizable). Hidden until a note is opened. -->
-    <div id="ui-container">
-        <div id="drag-handle"></div>
-        <div id="close-btn" title="Close"></div>
-        <input type="text" id="note-title" placeholder="Note Title">
-        <textarea id="note-content" placeholder="Write your note here..."></textarea>
-        <div class="button-group">
-            <button id="save-note" class="btn">Save</button>
-            <button id="delete-note" class="btn" title="Delete">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                    <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z"/>
-                    <path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3V2h11v1z"/>
-                </svg>
-            </button>
-        </div>
-        <div id="resize-handle-bl" class="resize-handle"></div>
-        <div id="resize-handle-br" class="resize-handle"></div>
-    </div>
+    <!-- Note editors are instantiated from the template above -->
     <!-- Edit currently selected object's shape, name, and color -->
     <div id="shape-edit-panel">
         <div id="shape-close-btn" title="Cancel"></div>
@@ -499,7 +506,9 @@
         const objects = new Map();
         const decals = new Map();
         // Selection + UI state
-        let selectedObject = null, editingObject = null, activeNote = { object: null, index: -1 }, lastIntersection = null, pendingNoteOpen = null, isDraggingCamera = false;
+        let selectedObject = null, editingObject = null, lastIntersection = null, pendingNoteOpen = null, isDraggingCamera = false;
+        const openEditors = new Map();
+        let nextEditorZ = 1100;
         let activeObjectUI = null, cycleIndex = -1, isCycling = false;
     const keyState = {};
     let isTyping = false;
@@ -510,20 +519,13 @@
         let cameraVelocity = new THREE.Vector3();
         // DOM refs split for readability (was a single chained declaration)
         const sceneContainer = document.getElementById('scene-container');
-        const uiContainer = document.getElementById('ui-container');
-        const noteTitleInput = document.getElementById('note-title');
-        const noteContentInput = document.getElementById('note-content');
-        const saveNoteBtn = document.getElementById('save-note');
-        const deleteNoteBtn = document.getElementById('delete-note');
-        const closeBtn = document.getElementById('close-btn');
+        const editorsRoot = document.getElementById('note-editors-root');
+        const noteEditorTemplate = document.getElementById('note-editor-template');
         const addObjectBtn = document.getElementById('add-object-btn');
     const confirmModal = document.getElementById('confirm-modal');
     const confirmMessage = document.getElementById('confirm-message');
         const modalConfirmBtn = document.getElementById('modal-confirm-btn');
         const modalCancelBtn = document.getElementById('modal-cancel-btn');
-        const resizeHandleBL = document.getElementById('resize-handle-bl');
-        const resizeHandleBR = document.getElementById('resize-handle-br');
-        const dragHandle = document.getElementById('drag-handle');
         const shapeEditPanel = document.getElementById('shape-edit-panel');
         const shapeCloseBtn = document.getElementById('shape-close-btn');
         const shapeNameInput = document.getElementById('shape-name-input');
@@ -815,6 +817,26 @@
                 selectedObject = null;
                 activeObjectUI = null;
             }
+
+            // Rebind open editors to refreshed meshes or close if object disappeared
+            for (const editorState of Array.from(openEditors.values())) {
+                const refreshedObject = objects.get(editorState.objectId);
+                if (refreshedObject) {
+                    editorState.object = refreshedObject;
+                    syncEditorContent(editorState);
+                } else {
+                    destroyEditor(editorState, { skipAnimation: true });
+                }
+            }
+
+            if (pendingNoteOpen) {
+                const { objectId, noteIndex, intersection } = pendingNoteOpen;
+                const targetObject = objects.get(objectId);
+                if (targetObject) {
+                    openNoteEditor(targetObject, noteIndex, { intersection });
+                }
+                pendingNoteOpen = null;
+            }
         }
 
 
@@ -908,14 +930,8 @@
             sceneContainer.addEventListener('mousedown', (e) => { sceneContainer.focus(); });
             sceneContainer.addEventListener('click', onObjectClick);
 
-            // Accessibility: disable nav while typing
-            noteTitleInput.addEventListener('focus', () => { isTyping = true; }); noteTitleInput.addEventListener('blur', () => { isTyping = false; }); noteContentInput.addEventListener('focus', () => { isTyping = true; }); noteContentInput.addEventListener('blur', () => { isTyping = false; });
-
             // Primary UI actions
             addObjectBtn.addEventListener('click', handleAddNewObjectClick);
-            saveNoteBtn.addEventListener('click', saveNote);
-            deleteNoteBtn.addEventListener('click', handleDeleteNoteClick);
-            closeBtn.addEventListener('click', closeNoteEditorWithAnimation);
             modalConfirmBtn.addEventListener('click', () => { if (deleteAction) deleteAction(); });
             modalCancelBtn.addEventListener('click', hideModal);
             document.getElementById('save-shape-btn').addEventListener('click', saveShapeChanges);
@@ -923,9 +939,6 @@
             shapeCloseBtn.addEventListener('click', closeShapeEditPanel);
             document.getElementById('delete-shape-btn').addEventListener('click', handleDeleteObjectFromShapeEditor);
 
-            // Draggable + resizable editor
-            initResizeBR(uiContainer, resizeHandleBR); initResizeBL(uiContainer, resizeHandleBL); initDrag(uiContainer, dragHandle);
-            
             loadDataFromStorage();
             rebuildSceneFromData();
             animate();
@@ -941,14 +954,294 @@
         /** Open shape editor for new object creation. */
         function handleAddNewObjectClick() { showShapeEditPanel(); }
         
-        /**
-         * Save the active note's content. Sets or clears a "sticky note" decal if notes exist.
-         * Stores decal position in object-local space so it survives scene rebuilds.
-         */
-        function saveNote() { if (!activeNote.object || activeNote.index < 0) return; const objectId = activeNote.object.userData.id; const objectData = sceneData.get(objectId); if (!objectData) return; const notes = [...(objectData.notes || [])]; notes[activeNote.index] = { title: noteTitleInput.value, content: noteContentInput.value }; const hasAnyNoteContent = notes.some(note => note.title || note.content); if (hasAnyNoteContent && !objectData.decal && lastIntersection) { const orientation = new THREE.Euler(); const matrix = new THREE.Matrix4().lookAt(lastIntersection.point, lastIntersection.point.clone().sub(lastIntersection.face.normal), activeNote.object.up); orientation.setFromRotationMatrix(matrix); objectData.decal = { position: lastIntersection.point.clone().applyMatrix4(new THREE.Matrix4().copy(activeNote.object.matrixWorld).invert()), orientation: {x: orientation.x, y: orientation.y, z: orientation.z} }; } else if (!hasAnyNoteContent) { objectData.decal = null; } objectData.notes = notes; sceneData.set(objectId, objectData); saveDataToStorage(); rebuildSceneFromData(); closeNoteEditorWithAnimation(); }
+        function getEditorKey(objectId, noteIndex) {
+            return `${objectId}:${noteIndex}`;
+        }
 
-        /** Play CRT close animation then hide editor and clear activeNote. */
-        function closeNoteEditorWithAnimation() { uiContainer.classList.add('closing'); uiContainer.addEventListener('animationend', () => { uiContainer.style.display = 'none'; uiContainer.classList.remove('closing'); activeNote = { object: null, index: -1 }; lastIntersection = null; }, { once: true }); }
+        function captureIntersectionSnapshot(intersection) {
+            if (!intersection) return null;
+            return {
+                point: intersection.point.clone(),
+                normal: intersection.face && intersection.face.normal ? intersection.face.normal.clone() : null,
+            };
+        }
+
+        function focusEditor(editorState) {
+            if (!editorState || !editorState.element) return;
+            editorState.element.style.zIndex = `${++nextEditorZ}`;
+            if (editorState.connector) {
+                if (!editorState.connector.isConnected) {
+                    editorsRoot.appendChild(editorState.connector);
+                }
+                editorState.connector.style.zIndex = `${nextEditorZ - 1}`;
+            }
+        }
+
+        function getExistingEditorRects(excludeElement) {
+            return Array.from(openEditors.values())
+                .filter(state => state.element && state.element !== excludeElement)
+                .map(state => state.element.getBoundingClientRect());
+        }
+
+        function findEditorSpawnPosition(element) {
+            if (!element) {
+                return { top: 20, left: Math.max(20, window.innerWidth - 320) };
+            }
+
+            const margin = 20;
+            const rect = element.getBoundingClientRect();
+            const width = rect.width || element.offsetWidth || 300;
+            const height = rect.height || element.offsetHeight || 260;
+            const minLeft = margin;
+            const maxLeft = Math.max(minLeft, window.innerWidth - width - margin);
+            const maxTop = Math.max(margin, window.innerHeight - height - margin);
+            const preferredLeft = maxLeft;
+            const preferredTop = margin;
+            const verticalStep = Math.max(40, Math.round(height * 0.25));
+            const horizontalStep = Math.max(40, Math.round(width * 0.25));
+            const maxRows = Math.max(1, Math.floor((maxTop - margin) / verticalStep) + 1);
+            const maxCols = Math.max(1, Math.floor((maxLeft - minLeft) / horizontalStep) + 1);
+            const existingRects = getExistingEditorRects(element);
+
+            const collides = (top, left) => {
+                const right = left + width;
+                const bottom = top + height;
+                return existingRects.some(r => !(right <= r.left || left >= r.right || bottom <= r.top || top >= r.bottom));
+            };
+
+            const candidates = [];
+            for (let diag = 0; diag < maxRows + maxCols; diag++) {
+                for (let row = 0; row <= diag; row++) {
+                    const col = diag - row;
+                    if (row >= maxRows || col >= maxCols) continue;
+                    const top = margin + row * verticalStep;
+                    const left = preferredLeft - col * horizontalStep;
+                    if (top > maxTop || left < minLeft) continue;
+                    candidates.push({ top, left });
+                }
+            }
+
+            candidates.push({
+                top: Math.min(preferredTop, maxTop),
+                left: Math.min(Math.max(minLeft, preferredLeft), maxLeft),
+            });
+
+            for (const candidate of candidates) {
+                if (!collides(candidate.top, candidate.left)) {
+                    return candidate;
+                }
+            }
+
+            return {
+                top: Math.min(preferredTop, maxTop),
+                left: Math.min(Math.max(minLeft, preferredLeft), maxLeft),
+            };
+        }
+
+        function positionEditor(editorState) {
+            if (!editorState || !editorState.element) return;
+            const { element } = editorState;
+            element.style.right = 'auto';
+            const { top, left } = findEditorSpawnPosition(element);
+            element.style.top = `${top}px`;
+            element.style.left = `${left}px`;
+        }
+
+        function attachEditorEvents(editorState) {
+            const { element, dragHandle, resizeBL, resizeBR, titleInput, contentInput, saveBtn, deleteBtn, closeBtn } = editorState;
+            if (dragHandle) initDrag(element, dragHandle);
+            if (resizeBL) initResizeBL(element, resizeBL);
+            if (resizeBR) initResizeBR(element, resizeBR);
+
+            element.addEventListener('mousedown', () => focusEditor(editorState));
+            element.addEventListener('focusin', () => focusEditor(editorState));
+
+            const markTyping = () => { isTyping = true; };
+            const clearTyping = () => { isTyping = false; };
+            titleInput.addEventListener('focus', markTyping);
+            titleInput.addEventListener('blur', clearTyping);
+            contentInput.addEventListener('focus', markTyping);
+            contentInput.addEventListener('blur', clearTyping);
+
+            saveBtn.addEventListener('click', () => saveNote(editorState));
+            deleteBtn.addEventListener('click', () => handleDeleteNoteClick(editorState));
+            closeBtn.addEventListener('click', () => closeNoteEditorWithAnimation(editorState));
+        }
+
+        function getNoteData(objectId, noteIndex) {
+            const objectData = sceneData.get(objectId);
+            if (!objectData || !Array.isArray(objectData.notes)) {
+                return { title: '', content: '' };
+            }
+            const note = objectData.notes[noteIndex];
+            return note ? { title: note.title || '', content: note.content || '' } : { title: '', content: '' };
+        }
+
+        function syncEditorContent(editorState) {
+            if (!editorState) return;
+            const { objectId, noteIndex, titleInput, contentInput } = editorState;
+            const note = getNoteData(objectId, noteIndex);
+            if (titleInput && document.activeElement !== titleInput) {
+                titleInput.value = note.title;
+            }
+            if (contentInput && document.activeElement !== contentInput) {
+                contentInput.value = note.content;
+            }
+        }
+
+        function instantiateEditor(object, noteIndex, options = {}) {
+            const objectId = object.userData.id;
+            const key = getEditorKey(objectId, noteIndex);
+            if (openEditors.has(key)) {
+                const existing = openEditors.get(key);
+                syncEditorContent(existing);
+                focusEditor(existing);
+                return existing;
+            }
+
+            const templateRoot = noteEditorTemplate.content.firstElementChild;
+            if (!templateRoot) throw new Error('Note editor template is missing root element.');
+            const editorElement = templateRoot.cloneNode(true);
+            editorElement.style.display = 'flex';
+            editorElement.dataset.editorKey = key;
+            editorElement.style.zIndex = `${++nextEditorZ}`;
+            editorElement.style.visibility = 'hidden';
+            editorElement.style.left = 'auto';
+
+            const titleInput = editorElement.querySelector('.note-title');
+            const contentInput = editorElement.querySelector('.note-content');
+            const saveBtn = editorElement.querySelector('.note-save-btn');
+            const deleteBtn = editorElement.querySelector('.note-delete-btn');
+            const closeBtn = editorElement.querySelector('.note-close-btn');
+            const dragHandle = editorElement.querySelector('.drag-handle');
+            const resizeBL = editorElement.querySelector('.resize-handle-bl');
+            const resizeBR = editorElement.querySelector('.resize-handle-br');
+            const connector = document.createElement('div');
+            connector.className = 'note-connector';
+            editorsRoot.appendChild(connector);
+
+            const editorState = {
+                key,
+                objectId,
+                object,
+                noteIndex,
+                element: editorElement,
+                titleInput,
+                contentInput,
+                saveBtn,
+                deleteBtn,
+                closeBtn,
+                dragHandle,
+                resizeBL,
+                resizeBR,
+                connector,
+                intersection: options.intersection || null,
+            };
+
+            attachEditorEvents(editorState);
+            editorsRoot.appendChild(editorElement);
+            positionEditor(editorState);
+            editorElement.style.visibility = 'visible';
+            openEditors.set(key, editorState);
+            syncEditorContent(editorState);
+            focusEditor(editorState);
+            return editorState;
+        }
+
+        function destroyEditor(editorState, { skipAnimation = false } = {}) {
+            if (!editorState) return;
+            const { element, key, connector } = editorState;
+            if (!element) return;
+            if (!skipAnimation && element.classList.contains('closing')) return;
+
+            if (document.activeElement === editorState.titleInput || document.activeElement === editorState.contentInput) {
+                isTyping = false;
+            }
+
+            if (openEditors.has(key)) openEditors.delete(key);
+            if (element.parentNode) element.parentNode.removeChild(element);
+            if (connector && connector.parentNode) connector.parentNode.removeChild(connector);
+        }
+
+        function closeNoteEditorWithAnimation(editorState) {
+            if (!editorState || !editorState.element) return;
+            const { element } = editorState;
+            if (element.classList.contains('closing')) return;
+            if (editorState.connector) editorState.connector.style.display = 'none';
+            element.classList.add('closing');
+            element.addEventListener('animationend', () => {
+                element.classList.remove('closing');
+                destroyEditor(editorState, { skipAnimation: true });
+            }, { once: true });
+        }
+
+        function saveNote(editorState) {
+            if (!editorState || !editorState.object) return;
+            const { object, objectId, noteIndex, titleInput, contentInput, intersection } = editorState;
+            const objectData = sceneData.get(objectId);
+            if (!objectData) return;
+
+            const notes = Array.isArray(objectData.notes) ? [...objectData.notes] : [];
+            notes[noteIndex] = { title: titleInput.value, content: contentInput.value };
+
+            const hasAnyNoteContent = notes.some(note => note && (note.title || note.content));
+
+            if (hasAnyNoteContent && !objectData.decal && intersection && object) {
+                const orientation = new THREE.Euler();
+                const faceNormal = intersection.normal ? intersection.normal.clone() : object.up.clone();
+                const matrix = new THREE.Matrix4().lookAt(
+                    intersection.point,
+                    intersection.point.clone().sub(faceNormal),
+                    object.up
+                );
+                orientation.setFromRotationMatrix(matrix);
+                const inverseMatrix = new THREE.Matrix4().copy(object.matrixWorld).invert();
+                objectData.decal = {
+                    position: intersection.point.clone().applyMatrix4(inverseMatrix),
+                    orientation: { x: orientation.x, y: orientation.y, z: orientation.z },
+                };
+            } else if (!hasAnyNoteContent) {
+                objectData.decal = null;
+            }
+
+            objectData.notes = notes;
+            sceneData.set(objectId, objectData);
+            saveDataToStorage();
+            rebuildSceneFromData();
+            closeNoteEditorWithAnimation(editorState);
+        }
+
+        function handleDeleteNoteClick(editorState) {
+            if (!editorState) return;
+            const { objectId, noteIndex } = editorState;
+            const objectData = sceneData.get(objectId);
+            if (!objectData) return;
+
+            confirmMessage.textContent = 'Delete this note?';
+            confirmModal.style.display = 'flex';
+            deleteAction = () => {
+                const notes = Array.isArray(objectData.notes) ? [...objectData.notes] : [];
+                notes.splice(noteIndex, 1);
+                objectData.notes = notes;
+                const hasAnyNoteContent = notes.some(n => (n && (n.title || n.content)));
+                if (!hasAnyNoteContent) objectData.decal = null;
+                sceneData.set(objectId, objectData);
+                saveDataToStorage();
+                rebuildSceneFromData();
+                for (const otherEditor of Array.from(openEditors.values())) {
+                    if (otherEditor.objectId === objectId && otherEditor.key !== editorState.key) {
+                        closeNoteEditorWithAnimation(otherEditor);
+                    }
+                }
+                closeNoteEditorWithAnimation(editorState);
+                hideModal();
+            };
+        }
+
+        function openNoteEditor(object, index, options = {}) {
+            const intersection = options.intersection || captureIntersectionSnapshot(lastIntersection);
+            instantiateEditor(object, index, { intersection });
+        }
         
         /** Save object property edits or create a new object. */
         function saveShapeChanges() {
@@ -1006,29 +1299,6 @@
             };
         }
 
-        /** Confirm delete note flow; removes only the selected note for the active object. */
-        function handleDeleteNoteClick() {
-            if (!activeNote.object || activeNote.index < 0) return;
-            confirmMessage.textContent = 'Delete this note?';
-            confirmModal.style.display = 'flex';
-            deleteAction = () => {
-                const objectId = activeNote.object.userData.id;
-                const objectData = sceneData.get(objectId);
-                if (!objectData) { hideModal(); return; }
-                const notes = [...(objectData.notes || [])];
-                notes.splice(activeNote.index, 1);
-                objectData.notes = notes;
-                // Remove decal if no notes remain
-                const hasAnyNoteContent = notes.some(n => (n.title || n.content));
-                if (!hasAnyNoteContent) objectData.decal = null;
-                sceneData.set(objectId, objectData);
-                saveDataToStorage();
-                rebuildSceneFromData();
-                // Close editor after deletion to reduce confusion
-                closeNoteEditorWithAnimation();
-                hideModal();
-            };
-        }
         /** Smoothly fade object and its decal, then remove from scene and storage. */
         function fadeAndDeleteObject(objectToDelete) {
             const objectId = objectToDelete.userData.id;
@@ -1036,14 +1306,12 @@
             const startTime = performance.now();
 
             // Close any open note tied to this object (before it disappears)
-            if (activeNote.object && activeNote.object.userData.id === objectId) {
-                if (uiContainer.style.display !== 'none' && !uiContainer.classList.contains('closing')) {
-                    closeNoteEditorWithAnimation();
-                } else {
-                    activeNote = { object: null, index: -1 };
-                    lastIntersection = null;
+            for (const editorState of Array.from(openEditors.values())) {
+                if (editorState.objectId === objectId) {
+                    closeNoteEditorWithAnimation(editorState);
                 }
             }
+            lastIntersection = null;
             if (pendingNoteOpen && pendingNoteOpen.objectId === objectId) {
                 pendingNoteOpen = null;
             }
@@ -1139,15 +1407,11 @@
                     sceneData.set(objectId, objectData);
                     saveDataToStorage();
                     rebuildSceneFromData();
-                    pendingNoteOpen = { objectId, noteIndex: updatedNotes.length - 1 };
+                    pendingNoteOpen = { objectId, noteIndex: updatedNotes.length - 1, intersection: captureIntersectionSnapshot(lastIntersection) };
                 },
             });
         }
 
-        /** Open the main note editor populated with the selected note. */
-        function openNoteEditor(object, index) { activeNote = { object, index }; const note = object.userData.data.notes[index]; updateUIPanel(note); uiContainer.style.display = 'flex'; }
-        /** Update editor inputs from Note content. */
-        function updateUIPanel(note) { noteTitleInput.value = note.title || ""; noteContentInput.value = note.content || ""; }
         /**
          * Keyboard movement with simple momentum. Disabled while typing to avoid accidental motion.
          */
@@ -1159,7 +1423,7 @@
          */
         function onObjectClick(event) {
             if (isDraggingCamera) return;
-            const uiElements = document.querySelectorAll('.object-ui, #ui-container, #shape-edit-panel, #add-object-btn, #confirm-modal');
+            const uiElements = document.querySelectorAll('.object-ui, .note-editor, #shape-edit-panel, #add-object-btn, #confirm-modal, #name-prompt-modal');
             for(const el of uiElements) {
                 if (el.contains(event.target)) return;
             }
@@ -1259,28 +1523,37 @@
         /**
          * Draw a line from the editor panel to the object's screen position to support spatial association.
          */
-        function updateLineConnector() {
-            const lineConnector = document.getElementById('line-connector');
+        function updateLineConnectors() {
             const show = getSetting('ui.showConnector', true);
-            if (show && activeNote.object && uiContainer.style.display !== 'none') {
-                const objectPosition = activeNote.object.position.clone();
-                objectPosition.project(camera);
-                const screenX = (objectPosition.x * 0.5 + 0.5) * renderer.domElement.clientWidth;
-                const screenY = (-objectPosition.y * 0.5 + 0.5) * renderer.domElement.clientHeight;
-                const uiRect = uiContainer.getBoundingClientRect();
-                const uiX = uiRect.left;
+            for (const editorState of openEditors.values()) {
+                const { element, object, connector } = editorState;
+                if (!connector) continue;
+
+                if (!show || !object || !element || element.style.display === 'none' || element.classList.contains('closing')) {
+                    connector.style.display = 'none';
+                    continue;
+                }
+
+                const projected = object.position.clone().project(camera);
+                if (projected.z < -1 || projected.z > 1) {
+                    connector.style.display = 'none';
+                    continue;
+                }
+                const screenX = (projected.x * 0.5 + 0.5) * window.innerWidth;
+                const screenY = (-projected.y * 0.5 + 0.5) * window.innerHeight;
+                const uiRect = element.getBoundingClientRect();
+                const uiX = uiRect.left + uiRect.width / 2;
                 const uiY = uiRect.top + uiRect.height / 2;
                 const dx = screenX - uiX;
                 const dy = screenY - uiY;
                 const length = Math.hypot(dx, dy);
                 const angle = Math.atan2(dy, dx) * (180 / Math.PI);
-                lineConnector.style.left = `${uiX}px`;
-                lineConnector.style.top = `${uiY}px`;
-                lineConnector.style.width = `${length}px`;
-                lineConnector.style.transform = `rotate(${angle}deg)`;
-                lineConnector.style.display = 'block';
-            } else {
-                lineConnector.style.display = 'none';
+                connector.style.left = `${uiX}px`;
+                connector.style.top = `${uiY}px`;
+                connector.style.width = `${length}px`;
+                connector.style.transform = `rotate(${angle}deg)`;
+                connector.style.display = 'block';
+                connector.style.zIndex = `${Math.max(0, parseInt(element.style.zIndex || `${nextEditorZ}`, 10) - 1)}`;
             }
         }
 
@@ -1290,7 +1563,7 @@
             if(!isCycling) handleCameraMovement();
             controls.update();
             checkObjectUIDistance();
-            updateLineConnector();
+            updateLineConnectors();
             filmPass.uniforms.time.value = clock.getElapsedTime();
             composer.render();
             labelRenderer.render(scene, camera);
