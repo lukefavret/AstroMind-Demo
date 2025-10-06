@@ -11,6 +11,11 @@ Format (template):
 
 ---
 
+## 2025-10-05 — Restore multi-note editor functionality
+- Description: Hardened editor instantiation to read note data from the scene store and keep open editors synchronized after scene rebuilds so multiple notes can open concurrently without blank panels.
+- Files touched: `index.html`
+- Notes: Refreshes per-editor content unless the field is actively being edited.
+
 ## 2025-10-05 — Require names before create (shapes & notes)
 - Description: Enforced non-empty names when creating shapes and notes to prevent accidental clutter. Prefills sequential defaults ("Shape N" / "Note N"), auto-focuses/selects the name, blocks save on empty, and Cancel discards the new item. Note creation is deferred until Save.
 - Files touched: `index.html`

@@ -825,6 +825,7 @@
                 const refreshedObject = objects.get(editorState.objectId);
                 if (refreshedObject) {
                     editorState.object = refreshedObject;
+                    syncEditorContent(editorState);
                 } else {
                     destroyEditor(editorState, { skipAnimation: true });
                 }
@@ -996,11 +997,33 @@
             closeBtn.addEventListener('click', () => closeNoteEditorWithAnimation(editorState));
         }
 
+        function getNoteData(objectId, noteIndex) {
+            const objectData = sceneData.get(objectId);
+            if (!objectData || !Array.isArray(objectData.notes)) {
+                return { title: '', content: '' };
+            }
+            const note = objectData.notes[noteIndex];
+            return note ? { title: note.title || '', content: note.content || '' } : { title: '', content: '' };
+        }
+
+        function syncEditorContent(editorState) {
+            if (!editorState) return;
+            const { objectId, noteIndex, titleInput, contentInput } = editorState;
+            const note = getNoteData(objectId, noteIndex);
+            if (titleInput && document.activeElement !== titleInput) {
+                titleInput.value = note.title;
+            }
+            if (contentInput && document.activeElement !== contentInput) {
+                contentInput.value = note.content;
+            }
+        }
+
         function instantiateEditor(object, noteIndex, options = {}) {
             const objectId = object.userData.id;
             const key = getEditorKey(objectId, noteIndex);
             if (openEditors.has(key)) {
                 const existing = openEditors.get(key);
+                syncEditorContent(existing);
                 focusEditor(existing);
                 return existing;
             }
@@ -1026,10 +1049,6 @@
             const resizeBR = editorElement.querySelector('.resize-handle-br');
             const connector = editorElement.querySelector('.note-connector');
 
-            const note = object.userData.data.notes[noteIndex] || { title: '', content: '' };
-            titleInput.value = note.title || '';
-            contentInput.value = note.content || '';
-
             const editorState = {
                 key,
                 objectId,
@@ -1051,6 +1070,7 @@
             attachEditorEvents(editorState);
             editorsRoot.appendChild(editorElement);
             openEditors.set(key, editorState);
+            syncEditorContent(editorState);
             focusEditor(editorState);
             return editorState;
         }
