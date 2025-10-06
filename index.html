@@ -8,7 +8,7 @@
       AstroMind-Demo single-file application
       - Vision: Analog Sci‑Fi aesthetic (CRT vibes, frosty glass UI) supporting spatial cognition
       - Engine: Three.js (no bundler). Persistence via localStorage only. Deployed as a static page.
-      - Interaction: WASD/QE + mouse, Tab to cycle objects, click objects to open on-object UI.
+      - Interaction: WASD/QE + mouse, Tab to cycle planets, click planets to open on-planet UI.
       - Accessibility: UI disables navigation when typing; distance-based UI auto-hide reduces clutter.
       Editing: All logic lives here. Reload the page after edits.
     -->
@@ -157,19 +157,19 @@
              background-color: rgba(33, 136, 56, 0.9);
         }
 
-        .note-editor .note-delete-btn, #delete-shape-btn {
+        .note-editor .note-delete-btn, #delete-planet-btn {
             background-color: rgba(220, 53, 69, 0.7);
             border-color: rgba(220, 53, 69, 1);
         }
-        .note-editor .note-delete-btn:hover, #delete-shape-btn:hover {
+        .note-editor .note-delete-btn:hover, #delete-planet-btn:hover {
             background-color: rgba(200, 48, 62, 0.9);
         }
         .note-delete-btn svg { width: 1.2em; height: 1.2em; }
-        #delete-shape-btn { display: flex; align-items: center; gap: 6px; margin-right: auto; }
-        #delete-shape-btn svg { width: 16px; height: 16px; }
+        #delete-planet-btn { display: flex; align-items: center; gap: 6px; margin-right: auto; }
+        #delete-planet-btn svg { width: 16px; height: 16px; }
 
-        /* Global "Add Object" CTA */
-        #add-object-btn {
+        /* Global "Create Planet" CTA */
+        #add-planet-btn {
             position: fixed;
             bottom: 20px;
             left: 50%;
@@ -186,7 +186,7 @@
             transition: background-color 0.3s, transform 0.2s;
             z-index: 1001;
         }
-        #add-object-btn:hover { background-color: #218838; transform: translateX(-50%) translateY(-2px); }
+        #add-planet-btn:hover { background-color: #218838; transform: translateX(-50%) translateY(-2px); }
 
         /* On-screen input help (non-blocking) */
         .instructions { position: fixed; top: 20px; left: 20px; background: rgba(0, 0, 0, 0.6); color: white; padding: 10px 15px; border-radius: 8px; font-size: 0.9em; }
@@ -270,16 +270,16 @@
         .note-editor .note-close-btn::before, .note-editor .note-close-btn::after { content: ''; position: absolute; top: 9px; left: 2px; width: 16px; height: 2px; background-color: #fff; }
         .note-editor .note-close-btn::before { transform: rotate(45deg); }
         .note-editor .note-close-btn::after { transform: rotate(-45deg); }
-        #shape-close-btn { position: absolute; top: 8px; right: 10px; width: 18px; height: 18px; cursor: pointer; opacity: 0.75; transition: opacity 0.2s; }
-        #shape-close-btn:hover { opacity: 1; }
-        #shape-close-btn::before, #shape-close-btn::after { content: ''; position: absolute; top: 8px; left: 2px; width: 14px; height: 2px; background-color: #fff; }
-        #shape-close-btn::before { transform: rotate(45deg); }
-        #shape-close-btn::after { transform: rotate(-45deg); }
+        #planet-close-btn { position: absolute; top: 8px; right: 10px; width: 18px; height: 18px; cursor: pointer; opacity: 0.75; transition: opacity 0.2s; }
+        #planet-close-btn:hover { opacity: 1; }
+        #planet-close-btn::before, #planet-close-btn::after { content: ''; position: absolute; top: 8px; left: 2px; width: 14px; height: 2px; background-color: #fff; }
+        #planet-close-btn::before { transform: rotate(45deg); }
+        #planet-close-btn::after { transform: rotate(-45deg); }
 
         /* ===============================
-           On-object UI card (CSS2D label)
+           On-planet UI card (CSS2D label)
            =============================== */
-        .object-ui {
+        .planet-ui {
             background: rgba(0, 0, 0, 0.7);
             color: white;
             padding: 10px;
@@ -288,7 +288,7 @@
             pointer-events: auto !important;
             cursor: default;
         }
-        .object-ui-header {
+        .planet-ui-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -296,9 +296,9 @@
             padding-bottom: 5px;
             margin-bottom: 5px;
         }
-        .object-ui-header h3 { margin: 0; font-size: 1.2em; }
-        .edit-shape-btn { background: none; border: none; color: white; cursor: pointer; padding: 2px; }
-        .edit-shape-btn svg { width: 16px; height: 16px; }
+        .planet-ui-header h3 { margin: 0; font-size: 1.2em; }
+        .edit-planet-btn { background: none; border: none; color: white; cursor: pointer; padding: 2px; }
+        .edit-planet-btn svg { width: 16px; height: 16px; }
         .notes-list { list-style: none; padding: 0; margin: 0; }
         .notes-list li { padding: 5px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.2); }
         .notes-list li:hover { background: rgba(255,255,255,0.2); }
@@ -306,8 +306,8 @@
         .add-note-btn { background: rgba(255,255,255,0.2); border: none; color: white; width: 100%; padding: 5px; margin-top: 5px; cursor: pointer; transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease; }
         .add-note-btn:hover, .add-note-btn:focus { background: rgba(255,255,255,0.35); transform: translateY(-1px); box-shadow: 0 0 6px rgba(255,255,255,0.25); outline: 2px solid rgba(255,255,255,0.7); outline-offset: 2px; }
 
-        /* Shape edit panel (object properties) */
-        #shape-edit-panel {
+        /* Planet edit panel (planet properties) */
+        #planet-edit-panel {
              position: fixed;
             top: 50%;
             left: 50%;
@@ -331,7 +331,7 @@
         .form-group select option { color: black; background-color: white; }
         .form-group input[type="color"] { padding: 2px; height: 35px; }
         
-        /* Screen-space connector line from editor to focused object */
+        /* Screen-space connector line from editor to focused planet */
         .note-connector {
             position: fixed;
             height: 2px;
@@ -411,18 +411,18 @@
     <div class="instructions">
         <p>Use WASD/Arrow keys to move.</p>
         <p>Q/E to move vertically.</p>
-        <p>Tab to cycle between objects.</p>
-        <p>Click an object to view its notes.</p>
+        <p>Tab to cycle between planets.</p>
+        <p>Click a planet to view its notes.</p>
         <p>UI hides when you move away.</p>
     </div>
     <!-- Note editors are instantiated from the template above -->
-    <!-- Edit currently selected object's shape, name, and color -->
-    <div id="shape-edit-panel">
-        <div id="shape-close-btn" title="Cancel"></div>
-        <h3>Edit Shape</h3>
+    <!-- Edit currently selected planet's geometry, name, and color -->
+    <div id="planet-edit-panel">
+        <div id="planet-close-btn" title="Cancel"></div>
+        <h3>Edit Planet</h3>
         <div class="form-group">
-            <label for="shape-name-input">Name</label>
-            <input type="text" id="shape-name-input">
+            <label for="planet-name-input">Name</label>
+            <input type="text" id="planet-name-input">
         </div>
         <div class="form-group">
             <label for="shape-type-select">Shape</label>
@@ -434,23 +434,23 @@
             </select>
         </div>
          <div class="form-group">
-            <label for="shape-color-input">Color</label>
-            <input type="color" id="shape-color-input" value="#ffffff">
+            <label for="planet-color-input">Color</label>
+            <input type="color" id="planet-color-input" value="#ffffff">
         </div>
         <div class="button-group">
-            <button id="delete-shape-btn" class="btn" title="Delete Object">
+            <button id="delete-planet-btn" class="btn" title="Delete Planet">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                     <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z"/>
                     <path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3V2h11v1z"/>
                 </svg>
                 Delete
             </button>
-            <button id="save-shape-btn" class="btn">Save</button>
-            <button id="close-shape-edit-btn" class="btn">Cancel</button>
+            <button id="save-planet-btn" class="btn">Save</button>
+            <button id="close-planet-edit-btn" class="btn">Cancel</button>
         </div>
     </div>
 
-    <button id="add-object-btn">Add New Object</button>
+    <button id="add-planet-btn">Create Planet</button>
 
     <!-- Destructive action confirmation modal -->
     <div id="confirm-modal" class="modal-overlay" style="display: none;">
@@ -463,7 +463,7 @@
         </div>
     </div>
 
-    <!-- Generic name prompt modal for new objects and notes -->
+    <!-- Generic name prompt modal for new planets and notes -->
     <div id="name-prompt-modal" class="modal-overlay" style="display: none;">
         <div class="modal-content">
             <h3 id="name-prompt-title">Name Item</h3>
@@ -492,8 +492,8 @@
         // =================================================================================
         /**
          * Spatial note-taking demo with an Analog Sci‑Fi aesthetic.
-         * - All state is persisted to localStorage as a Map of objectId -> ObjectData.
-         * - 3D objects have on-object UI (CSS2D labels). A separate draggable editor handles note content.
+         * - All state is persisted to localStorage as a Map of planetId -> PlanetData.
+         * - 3D planets have on-planet UI (CSS2D labels). A separate draggable editor handles note content.
          * - Keyboard navigation (WASD/QE) is disabled while typing to support focus and accessibility.
          */
 
@@ -502,19 +502,20 @@
         // =================================================================================
     /** @type {THREE.Scene} */
     let scene, camera, renderer, controls, raycaster, mouse, composer, clock, labelRenderer, filmPass, decalMaterial, retroPass;
-        /** Map of objectId -> THREE.Mesh (with .label: CSS2DObject) */
-        const objects = new Map();
+        /** Map of planetId -> THREE.Mesh (with .label: CSS2DObject) */
+        const planets = new Map();
         const decals = new Map();
         // Selection + UI state
         // Selection and UI state
-        let selectedObject = null;
-        let editingObject = null;
+        let selectedPlanet = null;
+        let editingPlanet = null;
         let lastIntersection = null;
         let pendingNoteOpen = null;
         let isDraggingCamera = false;
+        /** Map of `${planetId}:${noteIndex}` -> editor state */
         const openEditors = new Map();
         let nextEditorZ = 1100;
-        let activeObjectUI = null, cycleIndex = -1, isCycling = false;
+        let activePlanetUI = null, cycleIndex = -1, isCycling = false;
     const keyState = {};
     let isTyping = false;
     // Settings state
@@ -526,16 +527,19 @@
         const sceneContainer = document.getElementById('scene-container');
         const editorsRoot = document.getElementById('note-editors-root');
         const noteEditorTemplate = document.getElementById('note-editor-template');
-        const addObjectBtn = document.getElementById('add-object-btn');
+        const addPlanetBtn = document.getElementById('add-planet-btn');
     const confirmModal = document.getElementById('confirm-modal');
     const confirmMessage = document.getElementById('confirm-message');
         const modalConfirmBtn = document.getElementById('modal-confirm-btn');
         const modalCancelBtn = document.getElementById('modal-cancel-btn');
-        const shapeEditPanel = document.getElementById('shape-edit-panel');
-        const shapeCloseBtn = document.getElementById('shape-close-btn');
-        const shapeNameInput = document.getElementById('shape-name-input');
+        const planetEditPanel = document.getElementById('planet-edit-panel');
+        const planetCloseBtn = document.getElementById('planet-close-btn');
+        const planetNameInput = document.getElementById('planet-name-input');
         const shapeTypeSelect = document.getElementById('shape-type-select');
-        const shapeColorInput = document.getElementById('shape-color-input');
+        const planetColorInput = document.getElementById('planet-color-input');
+        const deletePlanetBtn = document.getElementById('delete-planet-btn');
+        const savePlanetBtn = document.getElementById('save-planet-btn');
+        const closePlanetEditBtn = document.getElementById('close-planet-edit-btn');
         const namePromptModal = document.getElementById('name-prompt-modal');
         const namePromptTitle = document.getElementById('name-prompt-title');
         const namePromptInput = document.getElementById('name-prompt-input');
@@ -544,11 +548,11 @@
         let deleteAction = null;
         let activeNamePrompt = null;
         let wasTypingBeforePrompt = false;
-        let wasTypingBeforeShapeEdit = false;
+        let wasTypingBeforePlanetEdit = false;
 
-        shapeNameInput.addEventListener('input', () => {
-            if (shapeNameInput.classList.contains('input-error')) {
-                shapeNameInput.classList.remove('input-error');
+        planetNameInput.addEventListener('input', () => {
+            if (planetNameInput.classList.contains('input-error')) {
+                planetNameInput.classList.remove('input-error');
             }
         });
         
@@ -649,7 +653,7 @@
         /**
          * Storage key for serializing the scene graph state to localStorage
          */
-        const STORAGE_KEY = 'astroMind-scene-data';
+        const STORAGE_KEY = 'astroMind-scene-data'; // Kept stable to preserve existing localStorage saves
         /**
          * @typedef {{title: string, content: string}} Note
          * @typedef {{x:number,y:number,z:number}} Vec3Plain
@@ -661,12 +665,12 @@
          *   position: Vec3Plain,
          *   notes: Note[],
          *   decal: DecalData|null
-         * }} ObjectData
-         * @type {Map<string, ObjectData>}
+         * }} PlanetData
+         * @type {Map<string, PlanetData>}
          */
         let sceneData = new Map();
 
-        /** Load Map<string, ObjectData> from localStorage (if any). */
+        /** Load Map<string, PlanetData> from localStorage (if any). */
         function loadDataFromStorage() {
             const dataString = localStorage.getItem(STORAGE_KEY);
             if (dataString) {
@@ -682,7 +686,7 @@
             }
         }
 
-        /** Persist Map<string, ObjectData> to localStorage. */
+        /** Persist Map<string, PlanetData> to localStorage. */
         function saveDataToStorage() {
             try {
                 const dataArray = Array.from(sceneData.entries());
@@ -794,40 +798,40 @@
 
         /**
          * Rebuild the live 3D scene from persisted data. Safe to call after any mutation.
-         * Keeps selections if the object still exists.
+         * Keeps selections if the planet still exists.
          */
         function rebuildSceneFromData() {
-            // Clear existing scene objects (but not lights, ground, etc.)
-            Array.from(objects.values()).forEach(obj => {
-                if (obj.label && obj.label.element && obj.label.element.parentNode) {
-                    obj.label.element.parentNode.removeChild(obj.label.element);
+            // Clear existing scene planets (but not lights, ground, etc.)
+            Array.from(planets.values()).forEach(planetMesh => {
+                if (planetMesh.label && planetMesh.label.element && planetMesh.label.element.parentNode) {
+                    planetMesh.label.element.parentNode.removeChild(planetMesh.label.element);
                 }
-                scene.remove(obj);
-                removeDecal(obj.userData.id);
+                scene.remove(planetMesh);
+                removeDecal(planetMesh.userData.id);
             });
-            objects.clear();
+            planets.clear();
 
-            // Re-create objects from sceneData
+            // Re-create planets from sceneData
             for (const [id, data] of sceneData.entries()) {
-                createObjectFromData(data, id);
+                createPlanetFromData(data, id);
             }
 
-            // After rebuilding, re-select object if it still exists
-            const selectedId = selectedObject ? selectedObject.userData.id : null;
-            if (selectedId && objects.has(selectedId)) {
-                selectedObject = objects.get(selectedId);
-                activeObjectUI = selectedObject.label;
-                activeObjectUI.element.style.display = 'block';
+            // After rebuilding, re-select planet if it still exists
+            const selectedId = selectedPlanet ? selectedPlanet.userData.id : null;
+            if (selectedId && planets.has(selectedId)) {
+                selectedPlanet = planets.get(selectedId);
+                activePlanetUI = selectedPlanet.label;
+                activePlanetUI.element.style.display = 'block';
             } else {
-                selectedObject = null;
-                activeObjectUI = null;
+                selectedPlanet = null;
+                activePlanetUI = null;
             }
 
-            // Rebind open editors to refreshed meshes or close if object disappeared
+            // Rebind open editors to refreshed meshes or close if planet disappeared
             for (const editorState of Array.from(openEditors.values())) {
-                const refreshedObject = objects.get(editorState.objectId);
-                if (refreshedObject) {
-                    editorState.object = refreshedObject;
+                const refreshedPlanet = planets.get(editorState.planetId);
+                if (refreshedPlanet) {
+                    editorState.planet = refreshedPlanet;
                     syncEditorContent(editorState);
                 } else {
                     destroyEditor(editorState, { skipAnimation: true });
@@ -835,10 +839,10 @@
             }
 
             if (pendingNoteOpen) {
-                const { objectId, noteIndex, intersection } = pendingNoteOpen;
-                const targetObject = objects.get(objectId);
-                if (targetObject) {
-                    openNoteEditor(targetObject, noteIndex, { intersection });
+                const { planetId, noteIndex, intersection } = pendingNoteOpen;
+                const targetPlanet = planets.get(planetId);
+                if (targetPlanet) {
+                    openNoteEditor(targetPlanet, noteIndex, { intersection });
                 }
                 pendingNoteOpen = null;
             }
@@ -917,7 +921,7 @@
             );
             composer.addPass(filmPass);
 
-            // Events: keep concise; prevent Tab from moving focus when cycling objects
+            // Events: keep concise; prevent Tab from moving focus when cycling planets
             window.addEventListener('resize', onWindowResize);
             window.addEventListener('keydown', (event) => {
                 if (activeNamePrompt) {
@@ -926,23 +930,23 @@
                 }
                 if (event.key === 'Tab') {
                     event.preventDefault();
-                    if (!isTyping) cycleToObject();
+                    if (!isTyping) cycleToPlanet();
                 } else {
                     keyState[event.code] = true;
                 }
             });
             window.addEventListener('keyup', (event) => { keyState[event.code] = false; });
             sceneContainer.addEventListener('mousedown', (e) => { sceneContainer.focus(); });
-            sceneContainer.addEventListener('click', onObjectClick);
+            sceneContainer.addEventListener('click', onPlanetClick);
 
             // Primary UI actions
-            addObjectBtn.addEventListener('click', handleAddNewObjectClick);
+            addPlanetBtn.addEventListener('click', handleCreatePlanetClick);
             modalConfirmBtn.addEventListener('click', () => { if (deleteAction) deleteAction(); });
             modalCancelBtn.addEventListener('click', hideModal);
-            document.getElementById('save-shape-btn').addEventListener('click', saveShapeChanges);
-            document.getElementById('close-shape-edit-btn').addEventListener('click', closeShapeEditPanel);
-            shapeCloseBtn.addEventListener('click', closeShapeEditPanel);
-            document.getElementById('delete-shape-btn').addEventListener('click', handleDeleteObjectFromShapeEditor);
+            savePlanetBtn.addEventListener('click', savePlanetChanges);
+            closePlanetEditBtn.addEventListener('click', closePlanetEditPanel);
+            planetCloseBtn.addEventListener('click', closePlanetEditPanel);
+            deletePlanetBtn.addEventListener('click', handleDeletePlanetFromEditor);
 
             loadDataFromStorage();
             rebuildSceneFromData();
@@ -956,11 +960,11 @@
         /** Resize from bottom-right handle. */
         function initResizeBR(element, handle) { let startX, startY, startWidth, startHeight; function doDrag(e) { e.preventDefault(); element.style.width = (startWidth + (e.clientX - startX)) + 'px'; element.style.height = (startHeight + (e.clientY - startY)) + 'px'; } function stopDrag() { document.documentElement.removeEventListener('mousemove', doDrag, false); document.documentElement.removeEventListener('mouseup', stopDrag, false); } handle.addEventListener('mousedown', (e) => { e.preventDefault(); e.stopPropagation(); startX = e.clientX; startY = e.clientY; const rect = element.getBoundingClientRect(); startWidth = rect.width; startHeight = rect.height; element.style.left = rect.left + 'px'; element.style.right = 'auto'; document.documentElement.addEventListener('mousemove', doDrag, false); document.documentElement.addEventListener('mouseup', stopDrag, false); }, false); }
         
-        /** Open shape editor for new object creation. */
-        function handleAddNewObjectClick() { showShapeEditPanel(); }
+        /** Open planet editor for new planet creation. */
+        function handleCreatePlanetClick() { showPlanetEditPanel(); }
         
-        function getEditorKey(objectId, noteIndex) {
-            return `${objectId}:${noteIndex}`;
+        function getEditorKey(planetId, noteIndex) {
+            return `${planetId}:${noteIndex}`;
         }
 
         function captureIntersectionSnapshot(intersection) {
@@ -1073,19 +1077,19 @@
             closeBtn.addEventListener('click', () => closeNoteEditorWithAnimation(editorState));
         }
 
-        function getNoteData(objectId, noteIndex) {
-            const objectData = sceneData.get(objectId);
-            if (!objectData || !Array.isArray(objectData.notes)) {
+        function getNoteData(planetId, noteIndex) {
+            const planetData = sceneData.get(planetId);
+            if (!planetData || !Array.isArray(planetData.notes)) {
                 return { title: '', content: '' };
             }
-            const note = objectData.notes[noteIndex];
+            const note = planetData.notes[noteIndex];
             return note ? { title: note.title || '', content: note.content || '' } : { title: '', content: '' };
         }
 
         function syncEditorContent(editorState) {
             if (!editorState) return;
-            const { objectId, noteIndex, titleInput, contentInput } = editorState;
-            const note = getNoteData(objectId, noteIndex);
+            const { planetId, noteIndex, titleInput, contentInput } = editorState;
+            const note = getNoteData(planetId, noteIndex);
             if (titleInput && document.activeElement !== titleInput) {
                 titleInput.value = note.title;
             }
@@ -1094,9 +1098,9 @@
             }
         }
 
-        function instantiateEditor(object, noteIndex, options = {}) {
-            const objectId = object.userData.id;
-            const key = getEditorKey(objectId, noteIndex);
+        function instantiateEditor(planet, noteIndex, options = {}) {
+            const planetId = planet.userData.id;
+            const key = getEditorKey(planetId, noteIndex);
             if (openEditors.has(key)) {
                 const existing = openEditors.get(key);
             const templateRoot = noteEditorTemplate.content.firstElementChild;
@@ -1127,8 +1131,8 @@
 
             const editorState = {
                 key,
-                objectId,
-                object,
+                planetId,
+                planet,
                 noteIndex,
                 element: editorElement,
                 titleInput,
@@ -1181,36 +1185,36 @@
         }
 
         function saveNote(editorState) {
-            if (!editorState || !editorState.object) return;
-            const { object, objectId, noteIndex, titleInput, contentInput, intersection } = editorState;
-            const objectData = sceneData.get(objectId);
-            if (!objectData) return;
+            if (!editorState || !editorState.planet) return;
+            const { planet, planetId, noteIndex, titleInput, contentInput, intersection } = editorState;
+            const planetData = sceneData.get(planetId);
+            if (!planetData) return;
 
-            const notes = Array.isArray(objectData.notes) ? [...objectData.notes] : [];
+            const notes = Array.isArray(planetData.notes) ? [...planetData.notes] : [];
             notes[noteIndex] = { title: titleInput.value, content: contentInput.value };
 
             const hasAnyNoteContent = notes.some(note => note && (note.title || note.content));
 
-            if (hasAnyNoteContent && !objectData.decal && intersection && object) {
+            if (hasAnyNoteContent && !planetData.decal && intersection && planet) {
                 const orientation = new THREE.Euler();
-                const faceNormal = intersection.normal ? intersection.normal.clone() : object.up.clone();
+                const faceNormal = intersection.normal ? intersection.normal.clone() : planet.up.clone();
                 const matrix = new THREE.Matrix4().lookAt(
                     intersection.point,
                     intersection.point.clone().sub(faceNormal),
-                    object.up
+                    planet.up
                 );
                 orientation.setFromRotationMatrix(matrix);
-                const inverseMatrix = new THREE.Matrix4().copy(object.matrixWorld).invert();
-                objectData.decal = {
+                const inverseMatrix = new THREE.Matrix4().copy(planet.matrixWorld).invert();
+                planetData.decal = {
                     position: intersection.point.clone().applyMatrix4(inverseMatrix),
                     orientation: { x: orientation.x, y: orientation.y, z: orientation.z },
                 };
             } else if (!hasAnyNoteContent) {
-                objectData.decal = null;
+                planetData.decal = null;
             }
 
-            objectData.notes = notes;
-            sceneData.set(objectId, objectData);
+            planetData.notes = notes;
+            sceneData.set(planetId, planetData);
             saveDataToStorage();
             rebuildSceneFromData();
             closeNoteEditorWithAnimation(editorState);
@@ -1218,23 +1222,23 @@
 
         function handleDeleteNoteClick(editorState) {
             if (!editorState) return;
-            const { objectId, noteIndex } = editorState;
-            const objectData = sceneData.get(objectId);
-            if (!objectData) return;
+            const { planetId, noteIndex } = editorState;
+            const planetData = sceneData.get(planetId);
+            if (!planetData) return;
 
             confirmMessage.textContent = 'Delete this note?';
             confirmModal.style.display = 'flex';
             deleteAction = () => {
-                const notes = Array.isArray(objectData.notes) ? [...objectData.notes] : [];
+                const notes = Array.isArray(planetData.notes) ? [...planetData.notes] : [];
                 notes.splice(noteIndex, 1);
-                objectData.notes = notes;
+                planetData.notes = notes;
                 const hasAnyNoteContent = notes.some(n => (n && (n.title || n.content)));
-                if (!hasAnyNoteContent) objectData.decal = null;
-                sceneData.set(objectId, objectData);
+                if (!hasAnyNoteContent) planetData.decal = null;
+                sceneData.set(planetId, planetData);
                 saveDataToStorage();
                 rebuildSceneFromData();
                 for (const otherEditor of Array.from(openEditors.values())) {
-                    if (otherEditor.objectId === objectId && otherEditor.key !== editorState.key) {
+                    if (otherEditor.planetId === planetId && otherEditor.key !== editorState.key) {
                         closeNoteEditorWithAnimation(otherEditor);
                     }
                 }
@@ -1243,31 +1247,31 @@
             };
         }
 
-        function openNoteEditor(object, index, options = {}) {
+        function openNoteEditor(planet, index, options = {}) {
             const intersection = options.intersection || captureIntersectionSnapshot(lastIntersection);
-            instantiateEditor(object, index, { intersection });
+            instantiateEditor(planet, index, { intersection });
         }
         
-        /** Save object property edits or create a new object. */
-        function saveShapeChanges() {
-            const newName = shapeNameInput.value.trim();
+        /** Save planet property edits or create a new planet. */
+        function savePlanetChanges() {
+            const newName = planetNameInput.value.trim();
             if (!newName) {
-                shapeNameInput.classList.add('input-error');
-                shapeNameInput.focus();
+                planetNameInput.classList.add('input-error');
+                planetNameInput.focus();
                 return;
             }
 
             const newShape = shapeTypeSelect.value;
-            const newColor = shapeColorInput.value;
+            const newColor = planetColorInput.value;
 
-            if (editingObject) {
-                const objectId = editingObject.userData.id;
-                const objectData = sceneData.get(objectId);
-                if (objectData) {
-                    objectData.name = newName;
-                    objectData.shape = newShape;
-                    objectData.color = newColor;
-                    sceneData.set(objectId, objectData);
+            if (editingPlanet) {
+                const planetId = editingPlanet.userData.id;
+                const planetData = sceneData.get(planetId);
+                if (planetData) {
+                    planetData.name = newName;
+                    planetData.shape = newShape;
+                    planetData.color = newColor;
+                    sceneData.set(planetId, planetData);
                 }
             } else {
                 const newId = crypto.randomUUID();
@@ -1287,57 +1291,57 @@
 
             saveDataToStorage();
             rebuildSceneFromData();
-            closeShapeEditPanel();
+            closePlanetEditPanel();
         }
-        
-        /** Confirm delete object flow from shape editor. */
-        function handleDeleteObjectFromShapeEditor() {
-            if (!editingObject) return;
-            confirmMessage.textContent = 'Delete this object and all of its notes?';
+
+        /** Confirm delete planet flow from the planet editor. */
+        function handleDeletePlanetFromEditor() {
+            if (!editingPlanet) return;
+            confirmMessage.textContent = 'Delete this planet and all of its notes?';
             confirmModal.style.display = 'flex';
             deleteAction = () => {
-                fadeAndDeleteObject(editingObject);
+                fadeAndDeletePlanet(editingPlanet);
                 hideModal();
-                closeShapeEditPanel();
-                if (activeObjectUI) activeObjectUI.element.style.display = 'none';
-                activeObjectUI = null;
+                closePlanetEditPanel();
+                if (activePlanetUI) activePlanetUI.element.style.display = 'none';
+                activePlanetUI = null;
             };
         }
 
-        /** Smoothly fade object and its decal, then remove from scene and storage. */
-        function fadeAndDeleteObject(objectToDelete) {
-            const objectId = objectToDelete.userData.id;
+        /** Smoothly fade a planet and its decal, then remove from scene and storage. */
+        function fadeAndDeletePlanet(planetToDelete) {
+            const planetId = planetToDelete.userData.id;
             const duration = 500;
             const startTime = performance.now();
 
-            // Close any open note tied to this object (before it disappears)
+            // Close any open note tied to this planet (before it disappears)
             for (const editorState of Array.from(openEditors.values())) {
-                if (editorState.objectId === objectId) {
+                if (editorState.planetId === planetId) {
                     closeNoteEditorWithAnimation(editorState);
                 }
             }
             lastIntersection = null;
-            if (pendingNoteOpen && pendingNoteOpen.objectId === objectId) {
+            if (pendingNoteOpen && pendingNoteOpen.planetId === planetId) {
                 pendingNoteOpen = null;
             }
 
-            objectToDelete.traverse((child) => {
+            planetToDelete.traverse((child) => {
                 if (child.isMesh) {
                     child.material = child.material.clone();
                     child.material.transparent = true;
                 }
             });
-            const decal = decals.get(objectId);
+            const decal = decals.get(planetId);
             if (decal) decal.material.transparent = true;
 
             function fade() {
                 const progress = Math.min((performance.now() - startTime) / duration, 1);
                 const opacity = 1 - progress;
-                objectToDelete.traverse((child) => { if (child.isMesh) child.material.opacity = opacity; });
+                planetToDelete.traverse((child) => { if (child.isMesh) child.material.opacity = opacity; });
                 if (decal) decal.material.opacity = opacity;
                 if (progress < 1) requestAnimationFrame(fade);
                 else {
-                    sceneData.delete(objectId);
+                    sceneData.delete(planetId);
                     saveDataToStorage();
                     rebuildSceneFromData();
                 }
@@ -1347,58 +1351,145 @@
         }
         function hideModal() { confirmModal.style.display = 'none'; deleteAction = null; }
         
-        /** Remove previously placed decal for an object (if any). */
-        function removeDecal(objectId) { if(decals.has(objectId)) { const decal = decals.get(objectId); scene.remove(decal); decal.geometry.dispose(); decals.delete(objectId); } }
-        /** Place or update a sticky-note style DecalGeometry on the object using saved local transform. */
-    function placeOrUpdateDecal(objectId, data) { removeDecal(objectId); const parentObject = objects.get(objectId); if (!parentObject || !data.decal) return; const position = new THREE.Vector3().copy(data.decal.position).applyMatrix4(parentObject.matrixWorld); const orientation = new THREE.Euler().copy(data.decal.orientation); const s = getSetting('notes.decalSize', 0.75); const decalGeom = new THREE.DecalGeometry(parentObject, position, orientation, new THREE.Vector3(s, s, s)); const decal = new THREE.Mesh(decalGeom, decalMaterial); decal.material = decal.material.clone(); decal.material.opacity = getSetting('notes.decalOpacity', 0.9); decal.material.transparent = true; decals.set(objectId, decal); scene.add(decal); }
+        /** Remove previously placed decal for a planet (if any). */
+        function removeDecal(planetId) {
+            if (decals.has(planetId)) {
+                const decal = decals.get(planetId);
+                scene.remove(decal);
+                decal.geometry.dispose();
+                decals.delete(planetId);
+            }
+        }
+        /** Place or update a sticky-note style DecalGeometry on the planet using saved local transform. */
+        function placeOrUpdateDecal(planetId, data) {
+            removeDecal(planetId);
+            const parentPlanet = planets.get(planetId);
+            if (!parentPlanet || !data.decal) return;
+            const position = new THREE.Vector3().copy(data.decal.position).applyMatrix4(parentPlanet.matrixWorld);
+            const orientation = new THREE.Euler().copy(data.decal.orientation);
+            const s = getSetting('notes.decalSize', 0.75);
+            const decalGeom = new THREE.DecalGeometry(parentPlanet, position, orientation, new THREE.Vector3(s, s, s));
+            const decal = new THREE.Mesh(decalGeom, decalMaterial);
+            decal.material = decal.material.clone();
+            decal.material.opacity = getSetting('notes.decalOpacity', 0.9);
+            decal.material.transparent = true;
+            decals.set(planetId, decal);
+            scene.add(decal);
+        }
         
-        /** Construct a THREE.Mesh from ObjectData and attach an on-object UI label. */
-        function createObjectFromData(data, id) { const geometry = getGeometry(data.shape); const material = new THREE.MeshStandardMaterial({ color: data.color || "#ffffff", roughness: 0.5, metalness: 0.1 }); const mesh = new THREE.Mesh(geometry, material); mesh.position.set(data.position.x, data.position.y, data.position.z); mesh.castShadow = true; mesh.receiveShadow = true; mesh.userData = { id, data }; const objectDiv = document.createElement('div'); objectDiv.className = 'object-ui'; const header = document.createElement('div'); header.className = 'object-ui-header'; const title = document.createElement('h3'); title.textContent = data.name; const editBtn = document.createElement('button'); editBtn.className = 'edit-shape-btn'; editBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M12.854.146a.5.5 0 0 0-.707 0L10.5 1.793 14.207 5.5l1.647-1.646a.5.5 0 0 0 0-.708l-3-3zm.646 6.061L9.793 2.5 3.293 9H3.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.207l6.5-6.5zm-7.468 7.468A.5.5 0 0 1 6 13.5V13h-.5a.5.5 0 0 1-.5-.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.5-.5V10h-.5a.499.499 0 0 1-.175-.032l-.179.178a.5.5 0 0 0-.11.168l-2 5a.5.5 0 0 0 .65.65l5-2a.5.5 0 0 0 .168-.11l.178-.178z"/></svg>`; editBtn.onclick = (e) => { e.stopPropagation(); showShapeEditPanel(mesh); }; header.appendChild(title); header.appendChild(editBtn); const notesList = document.createElement('ul'); notesList.className = 'notes-list'; (data.notes || []).forEach((note, index) => { const li = document.createElement('li'); li.textContent = note.title || `Note ${index + 1}`; li.onclick = (e) => { e.stopPropagation(); openNoteEditor(mesh, index); }; notesList.appendChild(li); }); const addNoteBtn = document.createElement('button'); addNoteBtn.className = 'add-note-btn'; addNoteBtn.textContent = '+ New Note'; addNoteBtn.onclick = (e) => { e.stopPropagation(); addNewNote(mesh); }; objectDiv.appendChild(header); objectDiv.appendChild(notesList); objectDiv.appendChild(addNoteBtn); const objectLabel = new THREE.CSS2DObject(objectDiv); objectLabel.position.set(0, 1.5, 0); mesh.add(objectLabel); mesh.label = objectLabel; objectLabel.element.style.display = 'none'; scene.add(mesh); objects.set(id, mesh); placeOrUpdateDecal(id, data); }
-        /** Populate and show the shape edit panel (or defaults for a new object). */
-        function showShapeEditPanel(object = null) {
-            editingObject = object;
-            shapeNameInput.classList.remove('input-error');
+        /** Construct a THREE.Mesh from PlanetData and attach an on-planet UI label. */
+        function createPlanetFromData(data, id) {
+            const geometry = getGeometry(data.shape);
+            const material = new THREE.MeshStandardMaterial({
+                color: data.color || "#ffffff",
+                roughness: 0.5,
+                metalness: 0.1
+            });
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.set(data.position.x, data.position.y, data.position.z);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            mesh.userData = { id, data };
 
-            if (editingObject) {
-                const data = editingObject.userData.data;
-                shapeNameInput.value = data.name;
+            const planetDiv = document.createElement('div');
+            planetDiv.className = 'planet-ui';
+
+            const header = document.createElement('div');
+            header.className = 'planet-ui-header';
+
+            const title = document.createElement('h3');
+            title.textContent = data.name;
+
+            const editBtn = document.createElement('button');
+            editBtn.className = 'edit-planet-btn';
+            editBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M12.854.146a.5.5 0 0 0-.707 0L10.5 1.793 14.207 5.5l1.647-1.646a.5.5 0 0 0 0-.708l-3-3zm.646 6.061L9.793 2.5 3.293 9H3.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.207l6.5-6.5zm-7.468 7.468A.5.5 0 0 1 6 13.5V13h-.5a.5.5 0 0 1-.5-.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.5-.5V10h-.5a.499.499 0 0 1-.175-.032l-.179.178a.5.5 0 0 0-.11.168l-2 5a.5.5 0 0 0 .65.65l5-2a.5.5 0 0 0 .168-.11l.178-.178z"/></svg>`;
+            editBtn.onclick = (e) => {
+                e.stopPropagation();
+                showPlanetEditPanel(mesh);
+            };
+
+            header.appendChild(title);
+            header.appendChild(editBtn);
+
+            const notesList = document.createElement('ul');
+            notesList.className = 'notes-list';
+            (data.notes || []).forEach((note, index) => {
+                const li = document.createElement('li');
+                li.textContent = note.title || `Note ${index + 1}`;
+                li.onclick = (e) => {
+                    e.stopPropagation();
+                    openNoteEditor(mesh, index);
+                };
+                notesList.appendChild(li);
+            });
+
+            const addNoteBtn = document.createElement('button');
+            addNoteBtn.className = 'add-note-btn';
+            addNoteBtn.textContent = '+ New Note';
+            addNoteBtn.onclick = (e) => {
+                e.stopPropagation();
+                addNewNote(mesh);
+            };
+
+            planetDiv.appendChild(header);
+            planetDiv.appendChild(notesList);
+            planetDiv.appendChild(addNoteBtn);
+
+            const planetLabel = new THREE.CSS2DObject(planetDiv);
+            planetLabel.position.set(0, 1.5, 0);
+            mesh.add(planetLabel);
+            mesh.label = planetLabel;
+            planetLabel.element.style.display = 'none';
+
+            scene.add(mesh);
+            planets.set(id, mesh);
+            placeOrUpdateDecal(id, data);
+        }
+        /** Populate and show the planet edit panel (or defaults for a new planet). */
+        function showPlanetEditPanel(planet = null) {
+            editingPlanet = planet;
+            planetNameInput.classList.remove('input-error');
+
+            if (editingPlanet) {
+                const data = editingPlanet.userData.data;
+                planetNameInput.value = data.name;
                 shapeTypeSelect.value = data.shape;
-                shapeColorInput.value = data.color;
+                planetColorInput.value = data.color;
             } else {
                 const existingNames = Array.from(sceneData.values()).map(entry => (entry && entry.name) ? entry.name : '');
-                shapeNameInput.value = getNextSequentialName('Shape', existingNames);
+                planetNameInput.value = getNextSequentialName('Planet', existingNames);
                 shapeTypeSelect.value = 'Box';
-                shapeColorInput.value = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+                planetColorInput.value = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
             }
 
-            shapeEditPanel.style.display = 'flex';
-            wasTypingBeforeShapeEdit = isTyping;
+            planetEditPanel.style.display = 'flex';
+            wasTypingBeforePlanetEdit = isTyping;
             isTyping = true;
 
             requestAnimationFrame(() => {
-                shapeNameInput.focus();
-                if (!editingObject) {
-                    shapeNameInput.select();
+                planetNameInput.focus();
+                if (!editingPlanet) {
+                    planetNameInput.select();
                 }
             });
         }
 
-        /** Hide the shape edit panel and reset state. */
-        function closeShapeEditPanel() {
-            shapeEditPanel.style.display = 'none';
-            editingObject = null;
-            shapeNameInput.classList.remove('input-error');
-            isTyping = wasTypingBeforeShapeEdit;
-            wasTypingBeforeShapeEdit = false;
+        /** Hide the planet edit panel and reset state. */
+        function closePlanetEditPanel() {
+            planetEditPanel.style.display = 'none';
+            editingPlanet = null;
+            planetNameInput.classList.remove('input-error');
+            isTyping = wasTypingBeforePlanetEdit;
+            wasTypingBeforePlanetEdit = false;
         }
-        
-        /** Create and select a new empty note for an object, auto-numbered. */
-        function addNewNote(object) {
-            const objectId = object.userData.id;
-            const objectData = sceneData.get(objectId);
-            if (!objectData) return;
 
-            const notes = Array.isArray(objectData.notes) ? [...objectData.notes] : [];
+        /** Create and select a new empty note for a planet, auto-numbered. */
+        function addNewNote(planet) {
+            const planetId = planet.userData.id;
+            const planetData = sceneData.get(planetId);
+            if (!planetData) return;
+
+            const notes = Array.isArray(planetData.notes) ? [...planetData.notes] : [];
             const existingNames = notes.map(note => (note && note.title) ? note.title : '');
             const suggestedTitle = getNextSequentialName('Note', existingNames);
 
@@ -1408,11 +1499,11 @@
                 confirmLabel: 'Create Note',
                 onConfirm: (noteTitle) => {
                     const updatedNotes = [...notes, { title: noteTitle, content: '' }];
-                    objectData.notes = updatedNotes;
-                    sceneData.set(objectId, objectData);
+                    planetData.notes = updatedNotes;
+                    sceneData.set(planetId, planetData);
                     saveDataToStorage();
                     rebuildSceneFromData();
-                    pendingNoteOpen = { objectId, noteIndex: updatedNotes.length - 1, intersection: captureIntersectionSnapshot(lastIntersection) };
+                    pendingNoteOpen = { planetId, noteIndex: updatedNotes.length - 1, intersection: captureIntersectionSnapshot(lastIntersection) };
                 },
             });
         }
@@ -1423,45 +1514,55 @@
         function handleCameraMovement() { const moveDirection = new THREE.Vector3(); if (!isTyping) { const forward = new THREE.Vector3(); camera.getWorldDirection(forward); const right = new THREE.Vector3().crossVectors(forward, camera.up); if (keyState['KeyW'] || keyState['ArrowUp']) moveDirection.add(forward); if (keyState['KeyS'] || keyState['ArrowDown']) moveDirection.sub(forward); if (keyState['KeyA'] || keyState['ArrowLeft']) moveDirection.sub(right); if (keyState['KeyD'] || keyState['ArrowRight']) moveDirection.add(right); if (keyState['KeyE']) moveDirection.y += 1; if (keyState['KeyQ']) moveDirection.y -= 1; } if (moveDirection.lengthSq() > 0) cameraVelocity.copy(moveDirection.normalize().multiplyScalar(moveSpeed)); camera.position.add(cameraVelocity); controls.target.add(cameraVelocity); cameraVelocity.multiplyScalar(DAMPING); }
         
         /**
-         * Raycast click on objects to toggle their on-object UI.
+         * Raycast click on planets to toggle their on-planet UI.
          * Ignores clicks that originate from UI elements or while dragging the camera.
          */
-        function onObjectClick(event) {
+        function onPlanetClick(event) {
             if (isDraggingCamera) return;
-            const uiElements = document.querySelectorAll('.object-ui, .note-editor, #shape-edit-panel, #add-object-btn, #confirm-modal, #name-prompt-modal');
-            for(const el of uiElements) {
+            const uiElements = document.querySelectorAll('.planet-ui, .note-editor, #planet-edit-panel, #add-planet-btn, #confirm-modal, #name-prompt-modal');
+            for (const el of uiElements) {
                 if (el.contains(event.target)) return;
             }
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
             raycaster.setFromCamera(mouse, camera);
-            const intersects = raycaster.intersectObjects(Array.from(objects.values()), true);
-            
+            const intersects = raycaster.intersectObjects(Array.from(planets.values()), true);
+
             if (intersects.length > 0) {
                 lastIntersection = intersects[0];
-                let clickedObject = lastIntersection.object;
-                while(clickedObject.parent && !clickedObject.userData.id) {
-                    clickedObject = clickedObject.parent;
+                let clickedPlanet = lastIntersection.object;
+                while (clickedPlanet.parent && !clickedPlanet.userData.id) {
+                    clickedPlanet = clickedPlanet.parent;
                 }
-                if(clickedObject.userData.id && objects.has(clickedObject.userData.id)) {
-                    if (selectedObject && selectedObject.userData.id === clickedObject.userData.id) return;
-                    if (activeObjectUI) activeObjectUI.element.style.display = 'none';
-                    selectedObject = objects.get(clickedObject.userData.id);
-                    activeObjectUI = selectedObject.label;
-                    activeObjectUI.element.style.display = 'block';
+                if (clickedPlanet.userData.id && planets.has(clickedPlanet.userData.id)) {
+                    if (selectedPlanet && selectedPlanet.userData.id === clickedPlanet.userData.id) return;
+                    if (activePlanetUI) activePlanetUI.element.style.display = 'none';
+                    selectedPlanet = planets.get(clickedPlanet.userData.id);
+                    activePlanetUI = selectedPlanet.label;
+                    activePlanetUI.element.style.display = 'block';
                 }
             } else {
-                if (activeObjectUI) {
-                    activeObjectUI.element.style.display = 'none';
-                    activeObjectUI = null;
+                if (activePlanetUI) {
+                    activePlanetUI.element.style.display = 'none';
+                    activePlanetUI = null;
                 }
-                selectedObject = null;
+                selectedPlanet = null;
                 lastIntersection = null;
             }
         }
 
-        /** Hide on-object UI when moving too far from the selection to reduce clutter. */
-    function checkObjectUIDistance() { if (activeObjectUI && selectedObject) { const distance = camera.position.distanceTo(selectedObject.position); const cutoff = getSetting('ui.labelHideDistance', 20); if (distance > cutoff) { activeObjectUI.element.style.display = 'none'; activeObjectUI = null; selectedObject = null; } } }
+        /** Hide on-planet UI when moving too far from the selection to reduce clutter. */
+        function checkPlanetUIDistance() {
+            if (activePlanetUI && selectedPlanet) {
+                const distance = camera.position.distanceTo(selectedPlanet.position);
+                const cutoff = getSetting('ui.labelHideDistance', 20);
+                if (distance > cutoff) {
+                    activePlanetUI.element.style.display = 'none';
+                    activePlanetUI = null;
+                    selectedPlanet = null;
+                }
+            }
+        }
         /** Easing helpers (comfort-first). */
         function easeInOutCubic(t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
         function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
@@ -1474,19 +1575,19 @@
                 default: return easeInOutCubic;
             }
         }
-        /** Smooth camera tween to cycle through objects on Tab. */
-        function cycleToObject() {
-            const objectArray = Array.from(objects.values());
-            if (objectArray.length === 0) return;
+        /** Smooth camera tween to cycle through planets on Tab. */
+        function cycleToPlanet() {
+            const planetArray = Array.from(planets.values());
+            if (planetArray.length === 0) return;
             // If a cycle is already in progress, cancel it and start a new one from the current pose
             if (isCycling) isCycling = false;
             isCycling = true;
-            cycleIndex = (cycleIndex + 1) % objectArray.length;
+            cycleIndex = (cycleIndex + 1) % planetArray.length;
 
-            const targetObject = objectArray[cycleIndex];
-            const targetPosition = targetObject.position.clone();
+            const targetPlanet = planetArray[cycleIndex];
+            const targetPosition = targetPlanet.position.clone();
 
-            // Maintain viewing direction relative to target: keep about 10 units away from the object.
+            // Maintain viewing direction relative to target: keep about 10 units away from the planet.
             const direction = new THREE.Vector3().subVectors(camera.position, targetPosition).normalize();
             const lockDistance = getSetting('cycle.distance', 10);
             const newCameraPosition = new THREE.Vector3().addVectors(targetPosition, direction.multiplyScalar(lockDistance));
@@ -1498,10 +1599,10 @@
             const easingFn = resolveEasing(getSetting('cycle.easing', 'easeInOutCubic'));
 
             // Prepare selection/UI immediately so the user perceives focus change
-            if (activeObjectUI) activeObjectUI.element.style.display = 'none';
-            selectedObject = targetObject;
-            activeObjectUI = selectedObject.label;
-            if (activeObjectUI) activeObjectUI.element.style.display = 'block';
+            if (activePlanetUI) activePlanetUI.element.style.display = 'none';
+            selectedPlanet = targetPlanet;
+            activePlanetUI = selectedPlanet.label;
+            if (activePlanetUI) activePlanetUI.element.style.display = 'block';
 
             function step(now) {
                 if (!isCycling) return;
@@ -1526,20 +1627,20 @@
         function onWindowResize() { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); labelRenderer.setSize(window.innerWidth, window.innerHeight); composer.setSize(window.innerWidth, window.innerHeight); }
         
         /**
-         * Draw a line from the editor panel to the object's screen position to support spatial association.
+         * Draw a line from the editor panel to the planet's screen position to support spatial association.
          */
         function updateLineConnectors() {
             const show = getSetting('ui.showConnector', true);
             for (const editorState of openEditors.values()) {
-                const { element, object, connector } = editorState;
+                const { element, planet, connector } = editorState;
                 if (!connector) continue;
 
-                if (!show || !object || !element || element.style.display === 'none' || element.classList.contains('closing')) {
+                if (!show || !planet || !element || element.style.display === 'none' || element.classList.contains('closing')) {
                     connector.style.display = 'none';
                     continue;
                 }
 
-                const projected = object.position.clone().project(camera);
+                const projected = planet.position.clone().project(camera);
                 if (projected.z < -1 || projected.z > 1) {
                     connector.style.display = 'none';
                     continue;
@@ -1567,7 +1668,7 @@
             requestAnimationFrame(animate);
             if(!isCycling) handleCameraMovement();
             controls.update();
-            checkObjectUIDistance();
+            checkPlanetUIDistance();
             updateLineConnectors();
             filmPass.uniforms.time.value = clock.getElapsedTime();
             composer.render();
